@@ -16,8 +16,6 @@ import forward
 import parse
 import OSC
 
-seq_prev = 0
-positions = {}
 
 MIDI_EVENT_NOTE_OFF = 0x80
 MIDI_EVENT_NOTE_ON = 0x90
@@ -27,69 +25,40 @@ MIDI_EVENT_PROGRAM_CHANGE = 0xC0
 MIDI_EVENT_CHANNEL_PRESSURE = 0xD0
 MIDI_EVENT_PITCH_BEND_CHANGE = 0xE0
 
+NOTE_AXIS_MAP = {
+    0.0: 60,
+    0.3: 62,
+    0.6: 64,
+    0.9: 65,
+    1.2: 67,
+    1.5: 69,
+    1.8: 71,
+    2.1: 72
+}
 
-def osc_midi(channel, event, p1, p2):
-    # return OSC.OSCMessage("/midi/{}".format(channel), [event, p1, p2]).getBinary()
-
-    if event == MIDI_EVENT_CONTROL_CHANGE:
-        return OSC.OSCMessage("/midicc", [channel, p1, p2]).getBinary()
-    else:
-        return OSC.OSCMessage("/midi", [channel, event, p1, p2]).getBinary()
-
-
-note_on = {}
-
-
-def map_note(lateral_position):
-    if lateral_position <= 0.25:
-        return 60
-    elif lateral_position <= 0.5:
-        return 62
-    elif lateral_position <= 0.75:
-        return 64
-    elif lateral_position <= 1.0:
-        return 68
-    elif lateral_position <= 1.25:
-        return 70
-    elif lateral_position <= 1.5:
-        return 72
-    elif lateral_position <= 1.75:
-        return 74
-    elif lateral_position <= 2.0:
-        return 76
-    elif lateral_position <= 2.25:
-        return 78
-    else:
-        return 80
+note_info = {}
 
 
 def handle_position(serial, position):
-    # if serial not in positions:
-    #     positions[serial] = position
-    #     return None
+    global note_info
 
-    # position_prev = positions[serial]
-    # positions[serial] = position
+    if serial not in note_info:
+        note_info[serial] = None
 
-    global note_on
-
-    if serial not in note_on:
-        note_on[serial] = None
-
-    if note_on[serial] is None and (position[0] < 0):
-        note_on[serial] = map_note(position[1])
-        print("note on")
-        return osc_midi(8, MIDI_EVENT_NOTE_ON, note_on[serial], 127)
-    elif note_on[serial] is not None and (position[0] > 0):
-        note = note_on[serial]
-        note_on[serial] = None
-        print("note off")
+    if note_info[serial] is None and (position[0] < 0):
+        note_info[serial] = map_note(position[1])
+        print("note: {} ON".format(note_info[serial]))
+        return osc_midi(8, MIDI_EVENT_NOTE_ON, note_info[serial], 127)
+    elif note_info[serial] is not None and (position[0] > 0):
+        note = note_info[serial]
+        note_info[serial] = None
+        print("note: {} OFF".format(note))
         return osc_midi(8, MIDI_EVENT_NOTE_OFF, note, 0)
-    elif note_on[serial] is not None:
-        note_prev = note_on[serial]
+    elif note_info[serial] is not None:
+        note_prev = note_info[serial]
         note = map_note(position[1])
         if note != note_prev:
-            note_on[serial] = note
+            note_info[serial] = note
             print("note: {} -> {}".format(note_prev, note))
             return osc_midi(8, MIDI_EVENT_NOTE_OFF, note_prev, 0), osc_midi(8, MIDI_EVENT_NOTE_ON, note, 127)
         else:
@@ -98,6 +67,26 @@ def handle_position(serial, position):
             return osc_midi(8, MIDI_EVENT_CONTROL_CHANGE, 7, value)
 
     return None
+
+
+def map_note(lateral_position):
+    note = None
+    thresholds = list(reversed(sorted(NOTE_AXIS_MAP.keys())))
+
+    for threshold in thresholds:
+        if lateral_position >= threshold:
+            return NOTE_AXIS_MAP[threshold]
+
+    return NOTE_AXIS_MAP[thresholds[-1]]
+
+
+def osc_midi(channel, event, p1, p2):
+    # return OSC.OSCMessage("/midi/{}".format(channel), [event, p1, p2]).getBinary()
+
+    if event == MIDI_EVENT_CONTROL_CHANGE:
+        return OSC.OSCMessage("/midicc", [channel, p1, p2]).getBinary()
+    else:
+        return OSC.OSCMessage("/midi", [channel, event, p1, p2]).getBinary()
 
 
 def display_position(serial, position):
