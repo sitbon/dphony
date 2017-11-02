@@ -25,15 +25,12 @@ MIDI_EVENT_PROGRAM_CHANGE = 0xC0
 MIDI_EVENT_CHANNEL_PRESSURE = 0xD0
 MIDI_EVENT_PITCH_BEND_CHANGE = 0xE0
 
+NOTE_BASE = 60
+
 NOTE_AXIS_MAP = {
-    0.0: 60,
-    0.3: 62,
-    0.6: 64,
-    0.9: 65,
-    1.2: 67,
-    1.5: 69,
-    1.8: 71,
-    2.1: 72
+    0.00: 5,
+    0.66: 7,
+    1.33: 4,
 }
 
 note_info = {}
@@ -75,9 +72,9 @@ def map_note(lateral_position):
 
     for threshold in thresholds:
         if lateral_position >= threshold:
-            return NOTE_AXIS_MAP[threshold]
+            return NOTE_BASE + NOTE_AXIS_MAP[threshold]
 
-    return NOTE_AXIS_MAP[thresholds[-1]]
+    return NOTE_BASE + NOTE_AXIS_MAP[thresholds[-1]]
 
 
 def osc_midi(channel, event, p1, p2):
@@ -90,7 +87,7 @@ def osc_midi(channel, event, p1, p2):
 
 
 def display_position(serial, position):
-    print("{:08X}: {}".format(serial, " ".join(str(p).rjust(24) for p in position)))
+    print("{:08X}: {}".format(serial, " ".join(str(p).rjust(12) for p in position)))
 
 
 def main(args):

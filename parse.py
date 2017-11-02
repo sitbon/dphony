@@ -17,18 +17,39 @@ def parse_dcc(data, handler):
     """
     data_len_exp = len(data) - 16
     sync_code, msg_type, msg_src, msg_dst, seq_num, data_len, msg_data, crc = \
-        struct.unpack("<3sBHHHI{}sH".format(data_len_exp))
+        struct.unpack("<3sBHHHI{}sH".format(data_len_exp), data)
 
     if data_len != data_len_exp:
         print("dcc: length mismatch {} != {}".format(data_len, data_len_exp))
         return None
 
-    if msg_type not in (MSG_UWB_EVT_ANCHOR_LOC_CHANGED, MSG_UWB_EVT_TAG_LOC_CHANGED):
+    if msg_type == MSG_UWB_EVT_ANCHOR_LOC_CHANGED:
+        id_hi = 0x00010000
+    elif msg_type == MSG_UWB_EVT_TAG_LOC_CHANGED:
+        id_hi = 0x00020000
+    else:
         return None
 
-    pos_num, pos_idx, px, py, pz = struct.unpack("<BBHHH", msg_data[:8])
+    count = struct.unpack("<B", msg_data[0])[0]
+    msg_data = msg_data[1:]
 
-    return handler(msg_src, (px/100.0, py/100.0, pz/100.0))
+    results = []
+
+    while count:
+        idx, px, py, pz = struct.unpack("<BHHH", msg_data[:7])
+        msg_data = msg_data[7:]
+
+        result = handler(id_hi | idx, (px/100.0, py/100.0, pz/100.0))
+
+        if result is not None:
+            if type(data) in (list, tuple):
+                results.extend(result)
+            else:
+                results.append(result)
+
+        count -= 1
+
+    return results
 
 
 def parse_lcm(data, handler):
