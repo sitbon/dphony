@@ -129,7 +129,7 @@ def main(args):
     if not args.out_port:
         args.out_port = args.port
 
-    fwd = Forward(args.input, args.port, args.out, args.out_port, args.verbose)
+    fwd = Forward(args.input, args.port, args.out, args.out_port, args.iface, args.verbose)
 
     print(fwd)
     fwd.start()

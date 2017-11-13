@@ -29,8 +29,10 @@ NOTE_BASE = 60
 
 NOTE_AXIS_MAP = {
     0.00: 5,
-    0.66: 7,
-    1.33: 4,
+    0.50: 7,
+    1.00: 4,
+    1.50: 2,
+    2.00: 9,
 }
 
 note_info = {}
@@ -60,7 +62,7 @@ def handle_position(serial, position):
             return osc_midi(8, MIDI_EVENT_NOTE_OFF, note_prev, 0), osc_midi(8, MIDI_EVENT_NOTE_ON, note, 127)
         else:
             value = min(127, int(round(abs(position[0])/1.5 * 127)))
-            print("cc/{}".format(value))
+            # print("cc/{}".format(value))
             return osc_midi(8, MIDI_EVENT_CONTROL_CHANGE, 7, value)
 
     return None
