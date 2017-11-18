@@ -7,6 +7,48 @@ MSG_UWB_EVT_ANCHOR_LOC_CHANGED = 0x89
 
 LCM_MAGIC = 0x4C433032
 CIH_MAGIC = 0xC1401A51
+CDP_MAGIC = 0x3230434C
+CDP_VERSN = "CDP0002\0"
+CDP_T_POS = 0x0100
+
+
+def parse_cdp(data, handler):
+    if len(data) < 20:
+        print("cdp: data too short for header", file=sys.stderr)
+        return
+
+    mark, seq, version, uid = struct.unpack("<II8sI", data[:20])
+
+    if mark != CDP_MAGIC:
+        print("cdp: bad mark 0x{:08X} != 0x%08X (expected)", mark, CDP_MAGIC, file=sys.stderr)
+        return
+
+    if version != CDP_VERSN:
+        print("cdp: bad version '{}' != '{}' (expected)", version, CDP_VERSN, file=sys.stderr)
+        return
+
+    data = data[20:]
+
+    if len(data) < 2:
+        print("cdp: data too short for message data", file=sys.stderr)
+        return
+
+    typ, size = struct.unpack("<HH", data[:2])
+
+    data = data[2:]
+
+    if len(data) != size:
+        print("cdp: message specified invalid data length", file=sys.stderr)
+        return
+
+    if typ == CDP_T_POS:
+        if len(data) != 24:
+            print("cdp: position message has bad length", file=sys.stderr)
+            return
+
+        px, py, pz, quality, smoothing, sequence, network_time = struct.unpack("", data)
+
+        return handler(uid, (px, py, pz))
 
 
 def parse_dcc(data, handler):
