@@ -109,6 +109,7 @@ def main(args):
     fwd = forward.Forward(
         args.input, args.port, args.out, args.out_port,
         iface=args.iface,
+        iface_out=args.out_iface,
         verbose=args.verbose,
         handler=lambda data: handler(data, position_handler)
     )
@@ -123,6 +124,7 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--input', metavar='ADDR', required=True, help='source address')
     parser.add_argument('-p', '--port', metavar='PORT', type=int, required=True, help='source port')
     parser.add_argument('-o', '--out', metavar='ADDR', required=True, help='destination address')
+    parser.add_argument('-O', '--out-iface', metavar='ADDR', required=False, help='outgoing iface address (NOT name!)')
     parser.add_argument('-P', '--out-port', metavar='PORT', type=int, help='destination port')
     parser.add_argument('-l', '--lcm', action='store_true', help='use lcm protocol for input')
     parser.add_argument('-v', '--verbose', action='store_true', help='verbose output')

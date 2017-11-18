@@ -39,7 +39,10 @@ class Udp(object):
             self.dest = (addr_ip, port)
 
             if is_multicast:
-                self.sock.bind((addr, 0))
+                if iface_ip == "0.0.0.0":
+                    self.sock.bind((addr, 0))
+                else:
+                    self.sock.bind((iface_ip, 0))
             else:
                 self.sock.bind((iface_ip, 0))
 
@@ -71,11 +74,11 @@ class Forward(object):
     queue = None
     verbose = False
 
-    def __init__(self, src_addr, src_port, dst_addr, dst_port, iface=None, verbose=False, handler=None):
+    def __init__(self, src_addr, src_port, dst_addr, dst_port, iface=None, iface_out=None, verbose=False, handler=None):
         self.sem_prod = threading.Semaphore(Forward.QUEUE_MAX_LEN)
         self.sem_cons = threading.Semaphore(0)
         self.udp_rx = Udp(src_addr, src_port, sender=False, iface=iface)
-        self.udp_tx = Udp(dst_addr, dst_port, sender=True)
+        self.udp_tx = Udp(dst_addr, dst_port, sender=True, iface=iface_out)
         self.thr_rx = threading.Thread(target=self._recv_task)
         self.thr_tx = threading.Thread(target=self._send_task)
         self.queue = []
@@ -129,7 +132,7 @@ def main(args):
     if not args.out_port:
         args.out_port = args.port
 
-    fwd = Forward(args.input, args.port, args.out, args.out_port, args.iface, args.verbose)
+    fwd = Forward(args.input, args.port, args.out, args.out_port, args.iface, args.out_iface, args.verbose)
 
     print(fwd)
     fwd.start()
@@ -137,10 +140,11 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-I', '--iface', metavar='ADDR', required=False, help='source interface address (NOT name!)')
+    parser.add_argument('-I', '--iface', metavar='ADDR', required=False, help='source iface address (NOT name!)')
     parser.add_argument('-i', '--input', metavar='ADDR', required=True, help='source address')
     parser.add_argument('-p', '--port', metavar='PORT', type=int, required=True, help='source port')
     parser.add_argument('-o', '--out', metavar='ADDR', required=True, help='destination address')
+    parser.add_argument('-O', '--out-iface', metavar='ADDR', required=False, help='outgoing iface address (NOT name!)')
     parser.add_argument('-P', '--out-port', metavar='PORT', type=int, help='destination port')
     parser.add_argument('-v', '--verbose', action='store_true', help='verbose output')
 
