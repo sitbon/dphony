@@ -84,7 +84,7 @@ def parse_dcc(data, handler):
         result = handler(id_hi | idx, (px/100.0, py/100.0, pz/100.0))
 
         if result is not None:
-            if type(data) in (list, tuple):
+            if type(result) in (list, tuple):
                 results.extend(result)
             else:
                 results.append(result)
