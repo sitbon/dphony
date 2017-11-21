@@ -87,13 +87,16 @@ def handle_position_lcm(serial, position, user_data):
     result = []
 
     if mask & 1:
-        result.append(osc_wrist(DEVICE_FILTER_LCM[serial], wrist))
+        result.append(osc_wrist(DEVICE_FILTER_LCM[serial], wrist, angle_horz, angle_vert))
 
     if mask & 2:
-        result.append(osc_tap(DEVICE_FILTER_LCM[serial], dir_tap, vel_tap))
+        result.append(osc_tap(DEVICE_FILTER_LCM[serial], dir_tap, vel_tap, angle_horz, angle_vert))
 
     if mask & 4:
-        result.append(osc_omni(DEVICE_FILTER_LCM[serial], dir_omni, vel_omni))
+        result.append(osc_omni(DEVICE_FILTER_LCM[serial], dir_omni, vel_omni, angle_horz, angle_vert))
+
+    if mask & 8:
+        result.append(osc_shake(DEVICE_FILTER_LCM[serial], dir_shake, vel_shake, angle_horz, angle_vert))
 
     if len(result):
         return result
@@ -132,28 +135,28 @@ def map_note(note_map, lateral_position):
 sequence_event = 0
 
 
-def osc_tap(serial, direction, velocity):
+def osc_shake(*args):
+    return osc_gesture("shake", *args)
+
+
+def osc_tap(*args):
+    return osc_gesture("tap", *args)
+
+
+def osc_omni(*args):
+    return osc_gesture("omni", *args)
+
+
+def osc_wrist(*args):
+    return osc_gesture("wrist", *args)
+
+
+def osc_gesture(gesture, serial, *args):
     global sequence_event
     sequence_event += 1
     return OSC.OSCMessage(
-        "/gesture/dancer/{}/tap".format(serial),
-        [sequence_event, direction, velocity]
-    ).getBinary()
-
-
-def osc_omni(serial, direction, velocity):
-    global sequence_event
-    sequence_event += 1
-    return OSC.OSCMessage(
-        "/gesture/dancer/{}/omni".format(serial),
-        [sequence_event, direction, velocity]
-    ).getBinary()
-
-
-def osc_wrist(serial, angle):
-    return OSC.OSCMessage(
-        "/gesture/dancer/{}/wrist".format(serial),
-        [angle]
+        "/gesture/dancer/{}/{}".format(serial, gesture),
+        (sequence_event,) + args
     ).getBinary()
 
 
