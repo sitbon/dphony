@@ -58,6 +58,7 @@ DEVICE_FILTER_LCM = {
     0x0102019A: "right_hand",
     0x010201B3: "left_ankle",
     0x010201E9: "right_ankle",
+    0x010201F9: "right_ankle",
 }
 
 note_info = {}
