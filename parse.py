@@ -7,6 +7,8 @@ MSG_UWB_EVT_ANCHOR_LOC_CHANGED = 0x89
 
 LCM_MAGIC = 0x4C433032
 CIH_MAGIC = 0xC1401A51
+LCM_FOOTR = 0x15A1041C
+
 CDP_MAGIC = 0x3230434C
 CDP_VERSN = "CDP0002\0"
 CDP_T_POS = 0x0100
@@ -99,10 +101,10 @@ def parse_lcm(data, handler):
         print("lcm: bad length {}".format(len(data)), file=sys.stderr)
         return None
 
-    magic_lcm, random1 = struct.unpack(">II", data[:8])
+    lcm_magic, lcm_sequence = struct.unpack(">II", data[:8])
 
-    if magic_lcm != LCM_MAGIC:
-        print("lcm: bad magic 0x{:08X} != 0x{:08X}".format(magic_lcm, LCM_MAGIC), file=sys.stderr)
+    if lcm_magic != LCM_MAGIC:
+        print("lcm: bad magic 0x{:08X} != 0x{:08X}".format(lcm_magic, LCM_MAGIC), file=sys.stderr)
         return None
 
     channel_name = ''
@@ -139,13 +141,17 @@ def parse_lcm(data, handler):
             print("lcm: P3 message too short", file=sys.stderr)
             return None
 
-        random2, dwusb_serial, random3, px, py, pz, random4, size = struct.unpack(
-           ">2sI2sfff13sH", data[:35]
+        payload_size, dwusb_serial, random3, px, py, pz, random4, size = struct.unpack(
+           ">HI2sfff13sH", data[:35]
         )
 
-        user_data = data[35:]
+        # payload_size == len(data[2:-4])
+        # data[:-4] == LCM_FOOTR
+        # size == len(user_data)
 
-        if len(user_data) != (size + 4):
+        user_data = data[35:-4]
+
+        if len(user_data) != size:
             print("lcm: invalid P3 message length {} != {}".format(size, len(user_data) - 4), file=sys.stderr)
             return None
 

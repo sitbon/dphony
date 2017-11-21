@@ -71,9 +71,11 @@ def handle_position_lcm(serial, position, user_data):
     if serial not in DEVICE_FILTER_LCM:
         return
 
+    result = [osc_position(DEVICE_FILTER_LCM[serial], position)]
+
     if not len(user_data):
-        # TODO: dedup
-        return osc_position(DEVICE_FILTER_LCM[serial], position)
+        # TODO: dedup?
+        return result
 
     whatever, sequence, mask, wrist, angle_vert, angle_horz, dir_tap, dir_omni, dir_shake,\
         vel_tap, vel_omni, vel_shake = \
@@ -83,8 +85,6 @@ def handle_position_lcm(serial, position, user_data):
         return
     else:
         lcm_dedup[serial] = sequence
-
-    result = []
 
     if mask & 1:
         result.append(osc_wrist(DEVICE_FILTER_LCM[serial], wrist, angle_horz, angle_vert))
