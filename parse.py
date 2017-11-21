@@ -151,7 +151,7 @@ def parse_lcm(data, handler):
 
         user_data = user_data[:-4]
 
-        return handler(dwusb_serial, (px, py, pz))
+        return handler(dwusb_serial, (px, py, pz), user_data)
 
     else:
         return None

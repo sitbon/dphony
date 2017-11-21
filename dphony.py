@@ -166,7 +166,7 @@ def osc_midi(channel, event, p1, p2):
         return OSC.OSCMessage("/midi", [channel, event, p1, p2]).getBinary()
 
 
-def display_position(serial, position):
+def display_position(serial, position, user_data):
     print("{:08X}: {}".format(serial, " ".join(str(p).rjust(12) for p in position)))
 
 

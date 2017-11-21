@@ -53,12 +53,49 @@ TRIG_AXIS_MAP_DCC = (653, 654)
 
 DEVICE_FILTER_DCC = (0x00020001, )
 
+DEVICE_FILTER_LCM = {
+    0x010201BF: "left_hand",
+    0x0102019A: "right_hand",
+    0x010201B3: "left_ankle",
+    0x010201E9: "right_ankle",
+}
+
 note_info = {}
 note_last = {}
 
+lcm_dedup = {}
 
-def handle_position_lcm(serial, position):
-    return osc_position(serial, position)
+
+def handle_position_lcm(serial, position, user_data):
+    if serial not in DEVICE_FILTER_LCM:
+        return
+
+    if not len(user_data):
+        # TODO: dedup
+        return osc_position(DEVICE_FILTER_LCM[serial], position)
+
+    whatever, sequence, mask, wrist, angle_vert, angle_horz, dir_tap, dir_omni, dir_shake,\
+        vel_tap, vel_omni, vel_shake = \
+        struct.unpack("<12B", user_data[:12])
+
+    if serial in lcm_dedup and lcm_dedup[serial] == sequence:
+        return
+    else:
+        lcm_dedup[serial] = sequence
+
+    result = []
+
+    if mask & 1:
+        result.append(osc_wrist(DEVICE_FILTER_LCM[serial], wrist))
+
+    if mask & 2:
+        result.append(osc_tap(DEVICE_FILTER_LCM[serial], dir_tap, vel_tap))
+
+    if mask & 4:
+        result.append(osc_omni(DEVICE_FILTER_LCM[serial], dir_omni, vel_omni))
+
+    if len(result):
+        return result
 
 
 def note_last_block(serial):
@@ -91,9 +128,37 @@ def map_note(note_map, lateral_position):
     return NOTE_BASE + note_map[thresholds[-1]]
 
 
+sequence_event = 0
+
+
+def osc_tap(serial, direction, velocity):
+    global sequence_event
+    sequence_event += 1
+    return OSC.OSCMessage(
+        "/gesture/dancer/{}/tap".format(serial),
+        [sequence_event, direction, velocity]
+    ).getBinary()
+
+
+def osc_omni(serial, direction, velocity):
+    global sequence_event
+    sequence_event += 1
+    return OSC.OSCMessage(
+        "/gesture/dancer/{}/omni".format(serial),
+        [sequence_event, direction, velocity]
+    ).getBinary()
+
+
+def osc_wrist(serial, angle):
+    return OSC.OSCMessage(
+        "/gesture/dancer/{}/wrist".format(serial),
+        [angle]
+    ).getBinary()
+
+
 def osc_position(serial, position):
     return OSC.OSCMessage(
-        "/position/dancer/{:08x}".format(serial),
+        "/position/dancer/{}".format(serial),
         position
     ).getBinary()
 
@@ -107,7 +172,7 @@ def osc_midi(channel, event, p1, p2):
         return OSC.OSCMessage("/midi", [channel, event, p1, p2]).getBinary()
 
 
-def display_position(serial, position):
+def display_position(serial, position, *args):
     print("{:08X}: {}".format(serial, " ".join(str(p).rjust(12) for p in position)))
 
 
