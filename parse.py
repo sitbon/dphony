@@ -11,6 +11,7 @@ LCM_FOOTR = 0x15A1041C
 
 CDP_MAGIC = 0x3230434C
 CDP_VERSN = "CDP0002\0"
+CDP_T_USER = 0x0007
 CDP_T_POS = 0x0100
 
 
@@ -32,16 +33,26 @@ def parse_cdp(data, handler):
     data = data[20:]
 
     if len(data) < 2:
-        print("cdp: data too short for message data", file=sys.stderr)
+        print("cdp: empty: {:08X} {}".format(uid, seq), file=sys.stderr)
         return
 
-    typ, size = struct.unpack("<HH", data[:2])
+    typ, size = struct.unpack("<HH", data[:4])
 
-    data = data[2:]
+    # print("mark={} seq={} ver={} uid={} typ=0x{:04X}".format(mark, seq, version, uid, typ))
 
-    if len(data) != size:
-        print("cdp: message specified invalid data length", file=sys.stderr)
+    data = data[4:]
+
+    if len(data) < size:
+        print("cdp: message specified too small data length {} != {}".format(size, len(data)), file=sys.stderr)
         return
+
+    if typ == CDP_T_USER:
+        subtyp = ord(data[0])
+        if subtyp == 0x04:
+            return handler(uid, None, data)
+        else:
+            pass
+            # print("cdp: unknown subtype 0x{:02X}".format(subtyp), file=sys.stderr)
 
     if typ == CDP_T_POS:
         if len(data) != 24:
@@ -50,7 +61,10 @@ def parse_cdp(data, handler):
 
         px, py, pz, quality, smoothing, sequence, network_time = struct.unpack("", data)
 
-        return handler(uid, (px, py, pz))
+        return handler(uid, (px, py, pz), data)
+    else:
+        # print("cdp: unknown type 0x{:04X}".format(typ), file=sys.stderr)
+        pass
 
 
 def parse_dcc(data, handler):
@@ -141,8 +155,8 @@ def parse_lcm(data, handler):
             print("lcm: P3 message too short", file=sys.stderr)
             return None
 
-        payload_size, dwusb_serial, random3, px, py, pz, random4, size = struct.unpack(
-           ">HI2sfff13sH", data[:35]
+        payload_size, dwusb_serial, network_id, px, py, pz, quality, smoothing, timestamp, size = struct.unpack(
+           ">HIHffffBQH", data[:35]
         )
 
         # payload_size == len(data[2:-4])

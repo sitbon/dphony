@@ -53,25 +53,78 @@ TRIG_AXIS_MAP_DCC = (653, 654)
 
 DEVICE_FILTER_DCC = (0x00020001, )
 
+DEVICE_FILTER_CDP = {
+    0x060212E6: "cdp/left_hand",
+    0x0602136F: "cdp/left_ankle",
+}
+
 DEVICE_FILTER_LCM = {
     0x010201BF: "left_hand",
     0x0102019A: "right_hand",
     0x010201B3: "left_ankle",
     0x010201E9: "right_ankle",
     0x010201F9: "right_ankle",
+    0x01020183: "testing",
 }
 
 note_info = {}
 note_last = {}
 
+cdp_dedup = {}
 lcm_dedup = {}
+
+
+def handle_position_cdp(serial, position, user_data):
+    if serial not in DEVICE_FILTER_CDP:
+        return
+
+    name = DEVICE_FILTER_CDP[serial]
+
+    result = []
+
+    if position is not None:
+        result.append(osc_position(name, position))
+
+    if not len(user_data) or len(user_data) < 12:
+        if len(result):
+            return result
+        return
+
+    whatever, sequence, mask, wrist, angle_vert, angle_horz, \
+        dir_tap, vel_tap, dir_omni, vel_omni, dir_shake, vel_shake = \
+        struct.unpack("<12B", user_data[:12])
+
+    if serial in cdp_dedup and cdp_dedup[serial] == sequence:
+        return
+    else:
+        cdp_dedup[serial] = sequence
+
+    if params.verbose:
+        print("{:08X}: 0x{:02X} 0x{:02X}".format(serial, sequence, mask))
+
+    if mask & 1:
+        result.append(osc_wrist(name, wrist, angle_horz, angle_vert))
+
+    if mask & 2:
+        result.append(osc_tap(name, dir_tap, vel_tap, angle_horz, angle_vert))
+
+    if mask & 4:
+        result.append(osc_omni(name, dir_omni, vel_omni, angle_horz, angle_vert))
+
+    if mask & 8:
+        result.append(osc_shake(name, dir_shake, vel_shake, angle_horz, angle_vert))
+
+    if len(result):
+        return result
 
 
 def handle_position_lcm(serial, position, user_data):
     if serial not in DEVICE_FILTER_LCM:
         return
 
-    result = [osc_position(DEVICE_FILTER_LCM[serial], position)]
+    name = DEVICE_FILTER_LCM[serial]
+
+    result = [osc_position(name, position)]
 
     if not len(user_data):
         # TODO: dedup?
@@ -87,16 +140,16 @@ def handle_position_lcm(serial, position, user_data):
         lcm_dedup[serial] = sequence
 
     if mask & 1:
-        result.append(osc_wrist(DEVICE_FILTER_LCM[serial], wrist, angle_horz, angle_vert))
+        result.append(osc_wrist(name, wrist, angle_horz, angle_vert))
 
     if mask & 2:
-        result.append(osc_tap(DEVICE_FILTER_LCM[serial], dir_tap, vel_tap, angle_horz, angle_vert))
+        result.append(osc_tap(name, dir_tap, vel_tap, angle_horz, angle_vert))
 
     if mask & 4:
-        result.append(osc_omni(DEVICE_FILTER_LCM[serial], dir_omni, vel_omni, angle_horz, angle_vert))
+        result.append(osc_omni(name, dir_omni, vel_omni, angle_horz, angle_vert))
 
     if mask & 8:
-        result.append(osc_shake(DEVICE_FILTER_LCM[serial], dir_shake, vel_shake, angle_horz, angle_vert))
+        result.append(osc_shake(name, dir_shake, vel_shake, angle_horz, angle_vert))
 
     if len(result):
         return result
@@ -154,37 +207,36 @@ def osc_wrist(*args):
 def osc_gesture(gesture, serial, *args):
     global sequence_event
     sequence_event += 1
-    return OSC.OSCMessage(
-        "/gesture/dancer/{}/{}".format(serial, gesture),
-        (sequence_event,) + args
-    ).getBinary()
+    return osc_message("/gesture/dancer/{}/{}".format(serial, gesture), sequence_event, *args)
 
 
 def osc_position(serial, position):
-    return OSC.OSCMessage(
-        "/position/dancer/{}".format(serial),
-        position
-    ).getBinary()
+    return osc_message("/position/dancer/{}".format(serial), position)
 
 
 def osc_midi(channel, event, p1, p2):
-    # return OSC.OSCMessage("/midi/{}".format(channel), [event, p1, p2]).getBinary()
-
     if event == MIDI_EVENT_CONTROL_CHANGE:
-        return OSC.OSCMessage("/midicc", [channel, p1, p2]).getBinary()
+        return osc_message("/midicc", channel, p1, p2)
     else:
-        return OSC.OSCMessage("/midi", [channel, event, p1, p2]).getBinary()
+        return osc_message("/midi", channel, event, p1, p2)
 
 
-def display_position(serial, position, *args):
-    print("{:08X}: {}".format(serial, " ".join(str(p).rjust(12) for p in position)))
+def osc_message(path, *data):
+    return OSC.OSCMessage(path, data).getBinary()
+
+
+def display_position(serial, position, data):
+    if len(data):
+        data = " ".join("{:02X}".format(ord(c)) for c in data)
+
+    print("{:08X}: {}\t{}".format(serial, " ".join(str(round(p, 3)).rjust(12) for p in position), data))
 
 
 def main(args):
     if not args.out_port:
         args.out_port = args.port
 
-    handler = parse.parse_dcc
+    handler = parse.parse_cdp
 
     if args.lcm:
         handler = parse.parse_lcm
@@ -195,14 +247,13 @@ def main(args):
         if args.lcm:
             position_handler = handle_position_lcm
         else:
-            position_handler = handle_position
-            
+            position_handler = handle_position_cdp
 
     fwd = forward.Forward(
         args.input, args.port, args.out, args.out_port,
         iface=args.iface,
         iface_out=args.out_iface,
-        verbose=args.verbose,
+        verbose=False,
         handler=lambda data: handler(data, position_handler)
     )
 
@@ -224,7 +275,8 @@ if __name__ == '__main__':
     parser.add_argument('-D', '--debug', action='store_true', help='debug mode')
 
     try:
-        main(parser.parse_args())
+        params = parser.parse_args()
+        main(params)
 
     except KeyboardInterrupt:
         pass
