@@ -226,10 +226,17 @@ def osc_message(path, *data):
 
 
 def display_position(serial, position, data):
-    if len(data):
+    if data is not None and len(data):
         data = " ".join("{:02X}".format(ord(c)) for c in data)
+    else:
+        data = ''
 
-    print("{:08X}: {}\t{}".format(serial, " ".join(str(round(p, 3)).rjust(12) for p in position), data))
+    if position is None:
+        pos = "-".rjust(12) * 3
+    else:
+        pos = " ".join(str(round(p, 3)).rjust(12) for p in position)
+
+    print("{:08X}: {}\t{}".format(serial, pos, data))
 
 
 def main(args):

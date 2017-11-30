@@ -54,7 +54,7 @@ def parse_cdp(data, handler):
             pass
             # print("cdp: unknown subtype 0x{:02X}".format(subtyp), file=sys.stderr)
 
-    if typ == CDP_T_POS:
+    elif typ == CDP_T_POS:
         if len(data) != 24:
             print("cdp: position message has bad length", file=sys.stderr)
             return
@@ -63,8 +63,9 @@ def parse_cdp(data, handler):
 
         return handler(uid, (px, py, pz), data)
     else:
-        # print("cdp: unknown type 0x{:04X}".format(typ), file=sys.stderr)
         pass
+        #if typ != 0x010E:
+        #    print("cdp: unknown type 0x{:04X}".format(typ), file=sys.stderr)
 
 
 def parse_dcc(data, handler):
