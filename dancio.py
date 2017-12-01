@@ -232,7 +232,7 @@ def display_position(serial, position, data):
         data = ''
 
     if position is None:
-        pos = "-".rjust(12) * 3
+        pos = "-".rjust(12) * 3 + "\t"
     else:
         pos = " ".join(str(round(p, 3)).rjust(12) for p in position)
 

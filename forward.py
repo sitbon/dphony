@@ -21,8 +21,8 @@ class Udp(object):
     def __init__(self, addr, port, sender=False, iface=None):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 16384)
-        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 16384)
+        # self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 16384)
+        # self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 16384)
 
         addr_ip = socket.gethostbyname(addr)
         is_multicast = ipaddress.ip_address(unicode(addr_ip)).is_multicast
@@ -52,7 +52,7 @@ class Udp(object):
             mreq = socket.inet_aton(addr_ip) + socket.inet_aton(iface_ip)
             self.sock.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
-        elif not sender:
+        elif not sender and iface is not None:
             print("<udp@{}> ignoring interface".format(self))
 
     def __str__(self):

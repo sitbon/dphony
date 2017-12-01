@@ -36,36 +36,37 @@ def parse_cdp(data, handler):
         print("cdp: empty: {:08X} {}".format(uid, seq), file=sys.stderr)
         return
 
-    typ, size = struct.unpack("<HH", data[:4])
+    while len(data):
+        typ, size = struct.unpack("<HH", data[:4])
 
-    # print("mark={} seq={} ver={} uid={} typ=0x{:04X}".format(mark, seq, version, uid, typ))
+        # print("mark={} seq={} ver={} uid={} typ=0x{:04X} size={}".format(mark, seq, version, uid, typ, size))
 
-    data = data[4:]
+        data = data[4:]
 
-    if len(data) < size:
-        print("cdp: message specified too small data length {} != {}".format(size, len(data)), file=sys.stderr)
-        return
-
-    if typ == CDP_T_USER:
-        subtyp = ord(data[0])
-        if subtyp == 0x04:
-            return handler(uid, None, data)
-        else:
-            pass
-            # print("cdp: unknown subtype 0x{:02X}".format(subtyp), file=sys.stderr)
-
-    elif typ == CDP_T_POS:
-        if len(data) != 24:
-            print("cdp: position message has bad length", file=sys.stderr)
+        if len(data) < size:
+            print("cdp: message specified too small data length {} != {}".format(size, len(data)), file=sys.stderr)
             return
 
-        px, py, pz, quality, smoothing, sequence, network_time = struct.unpack("", data)
+        if typ == CDP_T_USER:
+            subtyp = ord(data[0])
+            if subtyp == 0x04:
+                return handler(uid, None, data)
+            else:
+                pass
+                # print("cdp: unknown subtype 0x{:02X}".format(subtyp), file=sys.stderr)
 
-        return handler(uid, (px, py, pz), data)
-    else:
-        pass
-        #if typ != 0x010E:
-        #    print("cdp: unknown type 0x{:04X}".format(typ), file=sys.stderr)
+        elif typ == CDP_T_POS:
+            if len(data) != 24:
+                print("cdp: position message has bad length", file=sys.stderr)
+                return
+
+            px, py, pz, quality, smoothing, sequence, network_time = struct.unpack("<iiiIHHI", data)
+
+            return handler(uid, (px / 1000.0, py / 1000.0, pz / 1000.0), data)
+        else:
+            pass
+
+        data = data[size:]
 
 
 def parse_dcc(data, handler):
