@@ -27,51 +27,65 @@ MIDI_EVENT_PITCH_BEND_CHANGE = 0xE0
 
 NOTE_BASE = 60
 
-NOTE_AXIS_MAP_LCM = {
-    0.00: 5,
-    0.50: 7,
-    1.00: 4,
-    1.50: 2,
-    2.00: 9,
+NOTE_AXIS_MAP_CDP = {
+    0.3048 * 0: 5,
+    0.3048 * 1: 7,
+    0.3048 * 2: 4,
+    0.3048 * 3: 2,
+    0.3048 * 4: 9,
 }
-
-"""
-    Z: floor=653 waist=654
-    X: front=~0/0.75 back=3
-    Y: left=0 right=6.2 middle=~3
-"""
-
-NOTE_AXIS_MAP_DCC = {
-    3.00: 5,
-    3.50: 7,
-    4.00: 4,
-    4.50: 2,
-    5.00: 9,
-}
-
-TRIG_AXIS_MAP_DCC = (653, 654)
-
-DEVICE_FILTER_DCC = (0x00020001, )
 
 DEVICE_FILTER_CDP = {
     0x060212E6: "cdp/left_hand",
     0x0602136F: "cdp/left_ankle",
-}
-
-DEVICE_FILTER_LCM = {
-    0x010201BF: "left_hand",
-    0x0102019A: "right_hand",
-    0x010201B3: "left_ankle",
-    0x010201E9: "right_ankle",
-    0x010201F9: "right_ankle",
-    0x01020183: "testing",
+    0x06021351: "cdp/testing"
 }
 
 note_info = {}
 note_last = {}
 
+cdp_pos = {}
 cdp_dedup = {}
-lcm_dedup = {}
+
+
+def handle_position_cdp_music(serial, position, user_data):
+    if serial not in DEVICE_FILTER_CDP:
+        return
+
+    name = DEVICE_FILTER_CDP[serial]
+
+    result = []
+
+    if position is not None:
+        cdp_pos[serial] = position
+
+    if not len(user_data) or len(user_data) < 15:
+        if len(result):
+            return result
+        return
+
+    typ = struct.unpack("<B", user_data[:1])[0]
+
+    user_data = user_data[1:]
+
+    if typ == 4:
+        sequence, mask, w_ang, v_ang, h_ang, tap_d, tap_v, omni_d, omni_v, shake_d, shake_v, shake_du, lasso_d, lasso_v = struct.unpack(
+            '<BBbbbbbbbbbbbb', user_data[:14])
+
+        if serial in cdp_dedup and cdp_dedup[serial] == sequence:
+            return
+        else:
+            cdp_dedup[serial] = sequence
+
+        if (mask & 4) and (serial in cdp_pos):
+            note = map_note_cdp(cdp_pos[serial][0])
+            result.append(osc_midi_note(note))
+
+            if params.verbose:
+                print("{:08X}: note: {}".format(serial, note))
+
+    if len(result):
+        return result
 
 
 def handle_position_cdp(serial, position, user_data):
@@ -118,43 +132,6 @@ def handle_position_cdp(serial, position, user_data):
         return result
 
 
-def handle_position_lcm(serial, position, user_data):
-    if serial not in DEVICE_FILTER_LCM:
-        return
-
-    name = DEVICE_FILTER_LCM[serial]
-
-    result = [osc_position(name, position)]
-
-    if not len(user_data):
-        # TODO: dedup?
-        return result
-
-    whatever, sequence, mask, wrist, angle_vert, angle_horz, dir_tap, dir_omni, dir_shake,\
-        vel_tap, vel_omni, vel_shake = \
-        struct.unpack("<12B", user_data[:12])
-
-    if serial in lcm_dedup and lcm_dedup[serial] == sequence:
-        return
-    else:
-        lcm_dedup[serial] = sequence
-
-    if mask & 1:
-        result.append(osc_wrist(name, wrist, angle_horz, angle_vert))
-
-    if mask & 2:
-        result.append(osc_tap(name, dir_tap, vel_tap, angle_horz, angle_vert))
-
-    if mask & 4:
-        result.append(osc_omni(name, dir_omni, vel_omni, angle_horz, angle_vert))
-
-    if mask & 8:
-        result.append(osc_shake(name, dir_shake, vel_shake, angle_horz, angle_vert))
-
-    if len(result):
-        return result
-
-
 def note_last_block(serial):
     now = time.time()
     block = False
@@ -166,12 +143,8 @@ def note_last_block(serial):
     return block
 
 
-def map_note_dcc(lateral_position):
-    return map_note(NOTE_AXIS_MAP_DCC, lateral_position)
-
-
-def map_note_lcm(lateral_position):
-    return map_note(NOTE_AXIS_MAP_LCM, lateral_position)
+def map_note_cdp(lateral_position):
+    return map_note(NOTE_AXIS_MAP_CDP, lateral_position)
 
 
 def map_note(note_map, lateral_position):
@@ -214,6 +187,18 @@ def osc_position(serial, position):
     return osc_message("/position/dancer/{}".format(serial), position)
 
 
+def osc_midi_note(note, velocity_on=127, velocity_off=0):
+    return osc_midi_note_on(note, velocity_on) + osc_midi_note_off(note, velocity_off)
+
+
+def osc_midi_note_off(note, velocity=0):
+    return osc_midi(8, MIDI_EVENT_NOTE_OFF, note, velocity)
+
+
+def osc_midi_note_on(note, velocity=127):
+    return osc_midi(8, MIDI_EVENT_NOTE_ON, note, velocity)
+
+
 def osc_midi(channel, event, p1, p2):
     if event == MIDI_EVENT_CONTROL_CHANGE:
         return osc_message("/midicc", channel, p1, p2)
@@ -236,7 +221,8 @@ def display_position(serial, position, data):
     else:
         pos = " ".join(str(round(p, 3)).rjust(12) for p in position)
 
-    print("{:08X}: {}\t{}".format(serial, pos, data))
+    # print("{:08X}: {}\t{}".format(serial, pos, data))
+    print("{:08X}: {}".format(serial, pos))
 
 
 def main(args):
@@ -245,14 +231,11 @@ def main(args):
 
     handler = parse.parse_cdp
 
-    if args.lcm:
-        handler = parse.parse_lcm
-
     if args.debug:
         position_handler = display_position
     else:
-        if args.lcm:
-            position_handler = handle_position_lcm
+        if args.music:
+            position_handler = handle_position_cdp_music
         else:
             position_handler = handle_position_cdp
 
@@ -277,9 +260,10 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--out', metavar='ADDR', required=True, help='destination address')
     parser.add_argument('-O', '--out-iface', metavar='ADDR', required=False, help='outgoing iface address (NOT name!)')
     parser.add_argument('-P', '--out-port', metavar='PORT', type=int, help='destination port')
-    parser.add_argument('-l', '--lcm', action='store_true', help='use lcm protocol for input')
     parser.add_argument('-v', '--verbose', action='store_true', help='verbose output')
     parser.add_argument('-D', '--debug', action='store_true', help='debug mode')
+    parser.add_argument('-M', '--music', action='store_true', help='music system mode (default: video system mode)')
+
 
     try:
         params = parser.parse_args()
