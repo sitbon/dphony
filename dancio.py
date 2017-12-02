@@ -28,12 +28,27 @@ MIDI_EVENT_PITCH_BEND_CHANGE = 0xE0
 NOTE_BASE = 60
 
 NOTE_AXIS_MAP_CDP = {
-    0.3048 * 0: 5,
-    0.3048 * 1: 7,
-    0.3048 * 2: 4,
-    0.3048 * 3: 2,
-    0.3048 * 4: 9,
+    0.3 * 0: 0,
+    0.3 * 1: 2,
+    0.3 * 2: 4,
+    0.3 * 3: 5,
+    0.3 * 4: 7,
+    0.3 * 5: 9,
+    0.3 * 6: 11,
+    0.3 * 7: 12,
 }
+
+NOTE_AXIS_MAP_CDP_BLACK = {
+    0.3 * 0.0: 1,       # first black key, 0-1.5x
+    0.3 * 1.5: 3,       # second, 1.5x-2.5x
+    0.3 * 2.5: None,    # nothing, 2.5x-3.5x
+    0.3 * 3.5: 6,       # third, 3.5x-4.5x
+    0.3 * 4.5: 8,       # 4: 4.5x-5.5x
+    0.3 * 5.5: 10,      # 5: 5.5x-6.5x
+    0.3 * 6.5: None,    # nothing: 6.5x-7.5x
+}
+
+NOTE_THRESHOLD_CDP_BLACK = 0.75
 
 DEVICE_FILTER_CDP = {
     0x060212E6: "cdp/left_hand",
@@ -78,8 +93,17 @@ def handle_position_cdp_music(serial, position, user_data):
             cdp_dedup[serial] = sequence
 
         if (mask & 4) and (serial in cdp_pos):
-            note = map_note_cdp(cdp_pos[serial][0])
-            result.append(osc_midi_note(note))
+            pos = cdp_pos[serial]
+
+            if pos[1] >= NOTE_THRESHOLD_CDP_BLACK:
+                note = map_note_cdp_black(pos[0])
+
+                if note is None:
+                    note = map_note_cdp(pos[0])
+            else:
+                note = map_note_cdp(pos[0])
+
+            result.append(osc_midi_note_on(serial, note))
 
             if params.verbose:
                 print("{:08X}: note: {}".format(serial, note))
@@ -104,6 +128,7 @@ def handle_position_cdp(serial, position, user_data):
             return result
         return
 
+    # TODO: Update this to match above
     whatever, sequence, mask, wrist, angle_vert, angle_horz, \
         dir_tap, vel_tap, dir_omni, vel_omni, dir_shake, vel_shake = \
         struct.unpack("<12B", user_data[:12])
@@ -139,8 +164,12 @@ def note_last_block(serial):
     if (serial in note_last) and (now - note_last[serial]) <= 0.35:
             block = True
 
-    note_last[serial] = now
+    note_last[serial] = now  # should be above?
     return block
+
+
+def map_note_cdp_black(lateral_position):
+    return map_note(NOTE_AXIS_MAP_CDP_BLACK, lateral_position)
 
 
 def map_note_cdp(lateral_position):
@@ -153,6 +182,8 @@ def map_note(note_map, lateral_position):
 
     for threshold in thresholds:
         if lateral_position >= threshold:
+            if note_map[threshold] is None:
+                return None
             return NOTE_BASE + note_map[threshold]
 
     return NOTE_BASE + note_map[thresholds[-1]]
@@ -187,23 +218,16 @@ def osc_position(serial, position):
     return osc_message("/position/dancer/{}".format(serial), position)
 
 
-def osc_midi_note(note, velocity_on=127, velocity_off=0):
-    return osc_midi_note_on(note, velocity_on) + osc_midi_note_off(note, velocity_off)
+def osc_midi_note_off(serial, note, velocity=0):
+    return osc_midi(serial, MIDI_EVENT_NOTE_OFF, note, velocity)
 
 
-def osc_midi_note_off(note, velocity=0):
-    return osc_midi(8, MIDI_EVENT_NOTE_OFF, note, velocity)
+def osc_midi_note_on(serial, note, velocity=127):
+    return osc_midi(serial, MIDI_EVENT_NOTE_ON, note, velocity)
 
 
-def osc_midi_note_on(note, velocity=127):
-    return osc_midi(8, MIDI_EVENT_NOTE_ON, note, velocity)
-
-
-def osc_midi(channel, event, p1, p2):
-    if event == MIDI_EVENT_CONTROL_CHANGE:
-        return osc_message("/midicc", channel, p1, p2)
-    else:
-        return osc_message("/midi", channel, event, p1, p2)
+def osc_midi(serial, event, p1, p2):
+    return osc_message("/dance", serial, event, p1, p2)
 
 
 def osc_message(path, *data):
@@ -252,7 +276,8 @@ def main(args):
 
 
 if __name__ == '__main__':
-    # default: 239.255.0.80  10077
+    # default video: 239.255.0.80  10077
+    # default music: 239.255.0.81  10081
     parser = argparse.ArgumentParser()
     parser.add_argument('-I', '--iface', metavar='ADDR', required=False, help='source interface address (NOT name!)')
     parser.add_argument('-i', '--input', metavar='ADDR', required=True, help='source address')
