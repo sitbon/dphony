@@ -14,11 +14,10 @@ POSITION_SAMPLE_COUNT = 5
 cdp_pos = {}
 cdp_dedup = {}
 pos_post = {}
+cdp_out = {}
 
 
 def handle_position_cdp(serial, position, user_data):
-    global pos_post
-
     if position is not None:
         if serial in cdp_pos:
             cdp_pos[serial].append(position)
@@ -29,11 +28,18 @@ def handle_position_cdp(serial, position, user_data):
         pos_post[serial] = False
 
     if pos_post[serial] and len(cdp_pos[serial]) >= POSITION_SAMPLE_COUNT:
-        for pos in cdp_pos[serial][-POSITION_SAMPLE_COUNT:]:
-            display_position(serial, pos, None)
+        for position in cdp_pos[serial][-POSITION_SAMPLE_COUNT:]:
+            cdp_out[serial].append("{:08X}: {}".format(
+                serial, " ".join(str(round(p, 3)).rjust(12) for p in position)
+            ))
+
         cdp_pos[serial] = []
         pos_post[serial] = False
+
+        for line in cdp_out[serial]:
+            print(line)
         print()
+
     elif serial in cdp_pos and len(cdp_pos[serial]) > 100:
         cdp_pos[serial] = cdp_pos[serial][100:]
 
@@ -53,10 +59,14 @@ def handle_position_cdp(serial, position, user_data):
             cdp_dedup[serial] = sequence
 
         if (not pos_post[serial]) and (mask & 2) and (serial in cdp_pos):
-            for pos in cdp_pos[serial][-POSITION_SAMPLE_COUNT:]:
-                display_position(serial, pos, None)
+            cdp_out[serial] = []
 
-            print("{:08X}: hit".format(serial))
+            for position in cdp_pos[serial][-POSITION_SAMPLE_COUNT:]:
+                cdp_out[serial].append("{:08X}: {}".format(
+                    serial, " ".join(str(round(p, 3)).rjust(12) for p in position)
+                ))
+
+            cdp_out[serial].append("{:08X}: hit".format(serial))
             cdp_pos[serial] = []
             pos_post[serial] = True
 
