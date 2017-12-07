@@ -13,7 +13,7 @@ POSITION_SAMPLE_COUNT = 5
 
 cdp_pos = {}
 cdp_dedup = {}
-pos_post = False
+pos_post = {}
 
 
 def handle_position_cdp(serial, position, user_data):
@@ -25,16 +25,19 @@ def handle_position_cdp(serial, position, user_data):
         else:
             cdp_pos[serial] = [position]
 
-    if pos_post and len(cdp_pos[serial]) >= POSITION_SAMPLE_COUNT:
+    if serial not in pos_post:
+        pos_post[serial] = False
+
+    if pos_post[serial] and len(cdp_pos[serial]) >= POSITION_SAMPLE_COUNT:
         for pos in cdp_pos[serial][-POSITION_SAMPLE_COUNT:]:
             display_position(serial, pos, None)
         cdp_pos[serial] = []
-        pos_post = False
+        pos_post[serial] = False
         print()
     elif serial in cdp_pos and len(cdp_pos[serial]) > 100:
         cdp_pos[serial] = cdp_pos[serial][100:]
 
-    if not len(user_data) or len(user_data) < 12:
+    if user_data is None or not len(user_data) or len(user_data) < 12:
         return
 
     typ = struct.unpack("<B", user_data[:1])[0]
@@ -49,13 +52,13 @@ def handle_position_cdp(serial, position, user_data):
         else:
             cdp_dedup[serial] = sequence
 
-        if (not pos_post) and (mask & 2) and (serial in cdp_pos):
+        if (not pos_post[serial]) and (mask & 2) and (serial in cdp_pos):
             for pos in cdp_pos[serial][-POSITION_SAMPLE_COUNT:]:
                 display_position(serial, pos, None)
 
             print("{:08X}: hit".format(serial))
             cdp_pos[serial] = []
-            pos_post = True
+            pos_post[serial] = True
 
 
 def display_position(serial, position, data):
