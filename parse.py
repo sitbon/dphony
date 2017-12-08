@@ -32,6 +32,8 @@ def parse_cdp(data, handler):
 
     data = data[20:]
 
+    results = []
+
     while len(data) >= 4:
         typ, size = struct.unpack("<HH", data[:4])
 
@@ -46,7 +48,10 @@ def parse_cdp(data, handler):
         if typ == CDP_T_USER:
             subtyp = ord(data[0])
             if subtyp == 0x04:
-                handler(uid, None, data)
+                result = handler(uid, None, data)
+
+                if result:
+                    results.extend(result)
             else:
                 pass
                 # print("cdp: unknown subtype 0x{:02X}".format(subtyp), file=sys.stderr)
@@ -58,11 +63,17 @@ def parse_cdp(data, handler):
 
             px, py, pz, quality, smoothing, sequence, network_time = struct.unpack("<iiiIHHI", data)
 
-            handler(uid, (px / 1000.0, py / 1000.0, pz / 1000.0), None)
+            result = handler(uid, (px / 1000.0, py / 1000.0, pz / 1000.0), None)
+
+            if result:
+                results.extend(result)
         else:
             pass
 
         data = data[size:]
+
+    if len(results):
+        return results
 
 
 def parse_dcc(data, handler):

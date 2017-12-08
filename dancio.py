@@ -28,17 +28,34 @@ MIDI_EVENT_PITCH_BEND_CHANGE = 0xE0
 NOTE_BASE = 60
 
 NOTE_AXIS_MAP_CDP = {
-    0.3 * 0: 0,
-    0.3 * 1: 2,
-    0.3 * 2: 4,
-    0.3 * 3: 5,
-    0.3 * 4: 7,
-    0.3 * 5: 9,
-    0.3 * 6: 11,
-    0.3 * 7: 12,
+    0.3 * -7: -12,
+    0.3 * -6: -11,
+    0.3 * -5:  -9,
+    0.3 * -4:  -7,
+    0.3 * -3:  -5,
+    0.3 * -2:  -4,
+    0.3 * -1:  -2,
+    0.3 * 0:    0,
+    0.3 * 1:    2,
+    0.3 * 2:    4,
+    0.3 * 3:    5,
+    0.3 * 4:    7,
+    0.3 * 5:    9,
+    0.3 * 6:    11,
+    0.3 * 7:    12,
+    0.3 * 8:    14,
+    0.3 * 9:    16,
+    0.3 * 10:   18,
+    0.3 * 11:   19,
 }
 
 NOTE_AXIS_MAP_CDP_BLACK = {
+    0.3 * -6.5: None,
+    0.3 * -5.5: 10,
+    0.3 * -4.5: -8,
+    0.3 * -3.5: -6,
+    0.3 * -2.5: None,
+    0.3 * -1.5: -3,
     0.3 * 0.0: 1,       # first black key, 0-1.5x
     0.3 * 1.5: 3,       # second, 1.5x-2.5x
     0.3 * 2.5: None,    # nothing, 2.5x-3.5x
@@ -51,8 +68,12 @@ NOTE_AXIS_MAP_CDP_BLACK = {
 NOTE_THRESHOLD_CDP_BLACK = 0.75
 
 DEVICE_FILTER_CDP = {
-    0x060212E6: "cdp/left_hand",
+    # 0x060212E6: "cdp/left_hand",
     0x0602136F: "cdp/left_ankle",
+    0x06021367: "cdp/right_ankle",
+    0x060213A2: "cdp/right_ankle",
+    0x060212E6: "cdp/right_ankle",
+    0x06021359: "cdp/left_ankle",
     0x06021351: "cdp/testing"
 }
 
@@ -74,7 +95,7 @@ def handle_position_cdp_music(serial, position, user_data):
     if position is not None:
         cdp_pos[serial] = position
 
-    if not len(user_data) or len(user_data) < 15:
+    if user_data is None or not len(user_data) or len(user_data) < 15:
         if len(result):
             return result
         return
@@ -92,7 +113,7 @@ def handle_position_cdp_music(serial, position, user_data):
         else:
             cdp_dedup[serial] = sequence
 
-        if (mask & 4) and (serial in cdp_pos):
+        if (mask & 2) and (serial in cdp_pos):
             pos = cdp_pos[serial]
 
             if pos[1] >= NOTE_THRESHOLD_CDP_BLACK:
@@ -153,8 +174,7 @@ def handle_position_cdp(serial, position, user_data):
     if mask & 8:
         result.append(osc_shake(name, dir_shake, vel_shake, angle_horz, angle_vert))
 
-    if len(result):
-        return result
+    return result
 
 
 def note_last_block(serial):
@@ -185,6 +205,9 @@ def map_note(note_map, lateral_position):
             if note_map[threshold] is None:
                 return None
             return NOTE_BASE + note_map[threshold]
+
+    if note_map[thresholds[-1]] is None:
+        return None
 
     return NOTE_BASE + note_map[thresholds[-1]]
 
