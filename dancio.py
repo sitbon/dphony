@@ -144,37 +144,38 @@ def handle_position_cdp(serial, position, user_data):
     if position is not None:
         result.append(osc_position(name, position))
 
-    if not len(user_data) or len(user_data) < 12:
+    if user_data is None or not len(user_data) or len(user_data) < 15:
         if len(result):
             return result
         return
 
-    # TODO: Update this to match above
-    whatever, sequence, mask, wrist, angle_vert, angle_horz, \
-        dir_tap, vel_tap, dir_omni, vel_omni, dir_shake, vel_shake = \
-        struct.unpack("<12B", user_data[:12])
+    typ = struct.unpack("<B", user_data[:1])[0]
 
-    if serial in cdp_dedup and cdp_dedup[serial] == sequence:
-        return
-    else:
-        cdp_dedup[serial] = sequence
+    user_data = user_data[1:]
 
-    if params.verbose:
-        print("{:08X}: 0x{:02X} 0x{:02X}".format(serial, sequence, mask))
+    if typ == 4:
+        sequence, mask, w_ang, v_ang, h_ang, tap_d, tap_v, omni_d, omni_v, shake_d, shake_v, shake_du, lasso_d, lasso_v = struct.unpack(
+            '<BBbbbbbbbbbbbb', user_data[:14])
 
-    if mask & 1:
-        result.append(osc_wrist(name, wrist, angle_horz, angle_vert))
+        if serial in cdp_dedup and cdp_dedup[serial] == sequence:
+            return
+        else:
+            cdp_dedup[serial] = sequence
 
-    if mask & 2:
-        result.append(osc_tap(name, dir_tap, vel_tap, angle_horz, angle_vert))
+        if mask & 1:
+            result.append(osc_wrist(name, w_ang, h_ang, v_ang))
 
-    if mask & 4:
-        result.append(osc_omni(name, dir_omni, vel_omni, angle_horz, angle_vert))
+        if mask & 2:
+            result.append(osc_tap(name, tap_d, tap_v, h_ang, v_ang))
 
-    if mask & 8:
-        result.append(osc_shake(name, dir_shake, vel_shake, angle_horz, angle_vert))
+        if mask & 4:
+            result.append(osc_omni(name, omni_d, omni_v, h_ang, v_ang))
 
-    return result
+        if mask & 8:
+            result.append(osc_shake(name, shake_d, shake_v, h_ang, v_ang))
+
+    if len(result):
+        return result
 
 
 def note_last_block(serial):
