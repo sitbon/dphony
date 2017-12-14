@@ -15,7 +15,7 @@ import ipaddress
 import forward
 import parse
 import OSC
-
+import math
 
 MIDI_EVENT_NOTE_OFF = 0x80
 MIDI_EVENT_NOTE_ON = 0x90
@@ -28,11 +28,11 @@ MIDI_EVENT_PITCH_BEND_CHANGE = 0xE0
 NOTE_BASE = 60
 
 NOTE_AXIS_MAP_LCM = {
-    0.00: 5,
-    0.50: 7,
+    0.00: 0,
+    0.50: 2,
     1.00: 4,
-    1.50: 2,
-    2.00: 9,
+    1.50: 6,
+    2.00: 7,
 }
 
 """
@@ -41,15 +41,17 @@ NOTE_AXIS_MAP_LCM = {
     Y: left=0 right=6.2 middle=~3
 """
 
+# +x == stage right
+# +y == downstage
 NOTE_AXIS_MAP_DCC = {
-    3.00: 5,
-    3.50: 7,
-    4.00: 4,
-    4.50: 2,
-    5.00: 9,
+    1.00: 0,
+    2.00: 2,
+    3.00: 4,
+    4.00: 5,
+    5.00: 7,
 }
 
-TRIG_AXIS_MAP_DCC = (653, 654)
+TRIG_AXIS_MAP_DCC = (2.0, 0.0)
 
 DEVICE_FILTER_DCC = (0x00020001, )
 
@@ -57,11 +59,29 @@ note_info = {}
 note_last = {}
 
 
-def handle_position(serial, position):
+def transform_position(position):
+
+    uwb_rotation_angle = math.degrees(225.73)
+    uwb_origin = (-0.25, -25.59, -14.85)  # origin for Cow Palace
+
+    inx = position[0]
+    iny = position[1]
+    crot = math.cos(uwb_rotation_angle)
+    srot = math.sin(uwb_rotation_angle)
+    rx = inx * crot - iny * srot
+    ry = iny * srot + iny * crot
+    rz = position[2]
+
+    return rx - uwb_origin[0], ry - uwb_origin[1], rz - uwb_origin[2]
+
+
+def handle_position_music(serial, position):
     global note_info
 
-    if serial not in DEVICE_FILTER_DCC:
-        return
+    # if serial not in DEVICE_FILTER_DCC:
+    #     return
+
+    position = transform_position(position)
 
     if serial not in note_info:
         note_info[serial] = None
@@ -95,6 +115,14 @@ def handle_position(serial, position):
             return osc_midi(serial, MIDI_EVENT_CONTROL_CHANGE, 7, value)
 
     return None
+
+
+def handle_position(serial, position):
+    # if serial not in DEVICE_FILTER_DCC:
+    #     return
+
+    position = transform_position(position)
+    return osc_position(serial, position)
 
 
 def handle_position_lcm(serial, position):
@@ -147,7 +175,6 @@ def map_note_lcm(lateral_position):
 
 
 def map_note(note_map, lateral_position):
-    note = None
     thresholds = list(reversed(sorted(note_map.keys())))
 
     for threshold in thresholds:
@@ -158,11 +185,20 @@ def map_note(note_map, lateral_position):
 
 
 def osc_midi(serial, event, p1, p2):
-    # format: /drone [serial, event, note, value]
-    return OSC.OSCMessage("/drone", [serial, event, p1, p2]).getBinary()
+    # format: /drone [event, note, value]
+    return osc_message("/midi/drone", event, p1, p2)
 
 
-def display_position(serial, position, user_data):
+def osc_position(serial, position):
+    return osc_message("/position/drone/{:08X}".format(serial), position)
+
+
+def osc_message(path, *data):
+    return OSC.OSCMessage(path, data).getBinary()
+
+
+def display_position(serial, position):
+    position = transform_position(position)
     print("{:08X}: {}".format(serial, " ".join(str(p).rjust(12) for p in position)))
 
 
@@ -180,9 +216,10 @@ def main(args):
     else:
         if args.lcm:
             position_handler = handle_position_lcm
+        elif args.music:
+            position_handler = handle_position_music
         else:
             position_handler = handle_position
-            
 
     fwd = forward.Forward(
         args.input, args.port, args.out, args.out_port,
@@ -207,6 +244,7 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--lcm', action='store_true', help='use lcm protocol for input')
     parser.add_argument('-v', '--verbose', action='store_true', help='verbose output')
     parser.add_argument('-D', '--debug', action='store_true', help='debug mode')
+    parser.add_argument('-M', '--music', action='store_true', help='music system mode (default: video system mode)')
 
     try:
         main(parser.parse_args())

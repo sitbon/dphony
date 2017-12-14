@@ -51,6 +51,7 @@ class Udp(object):
         if is_multicast:
             mreq = socket.inet_aton(addr_ip) + socket.inet_aton(iface_ip)
             self.sock.setsockopt(socket.SOL_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+            self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 64)  # or SOL_IP?
 
         elif not sender and iface is not None:
             print("<udp@{}> ignoring interface".format(self))
@@ -99,8 +100,8 @@ class Forward(object):
             self.sem_prod.acquire()
             data, addr = self.udp_rx.sock.recvfrom(4096)
 
-            if self.verbose:
-                print("[{}:{}] {}".format(addr[0], addr[1], " ".join("{:02X}".format(ord(b)) for b in data)), file=sys.stderr)
+            # if self.verbose:
+            #     print("[{}:{}] {}".format(addr[0], addr[1], " ".join("{:02X}".format(ord(b)) for b in data)), file=sys.stderr)
 
             self.queue.append(data)
             self.sem_cons.release()

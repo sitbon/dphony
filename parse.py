@@ -92,6 +92,7 @@ def parse_dcc(data, handler):
 
     if msg_type == MSG_UWB_EVT_ANCHOR_LOC_CHANGED:
         id_hi = 0x00010000
+        return None
     elif msg_type == MSG_UWB_EVT_TAG_LOC_CHANGED:
         id_hi = 0x00020000
     else:
@@ -103,8 +104,11 @@ def parse_dcc(data, handler):
     results = []
 
     while count:
-        idx, px, py, pz = struct.unpack("<BHHH", msg_data[:7])
+        idx, px, py, pz = struct.unpack("<Bhhh", msg_data[:7])
         msg_data = msg_data[7:]
+
+        if msg_type == MSG_UWB_EVT_TAG_LOC_CHANGED:
+            idx += 128
 
         result = handler(id_hi | idx, (px/100.0, py/100.0, pz/100.0))
 

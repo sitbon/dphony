@@ -25,20 +25,16 @@ MIDI_EVENT_PROGRAM_CHANGE = 0xC0
 MIDI_EVENT_CHANNEL_PRESSURE = 0xD0
 MIDI_EVENT_PITCH_BEND_CHANGE = 0xE0
 
-NOTE_BASE = 60
+NOTE_BASE = 41
+
+ORIGIN = (2.895 + 0.6, -6.595, 0.0)
+DIRECTION = (-1, -1, 1)
 
 NOTE_AXIS_MAP_CDP = {
-    0.3 * -7: -12,
-    0.3 * -6: -11,
-    0.3 * -5:  -9,
-    0.3 * -4:  -7,
-    0.3 * -3:  -5,
-    0.3 * -2:  -4,
-    0.3 * -1:  -2,
     0.3 * 0:    0,
     0.3 * 1:    2,
     0.3 * 2:    4,
-    0.3 * 3:    5,
+    0.3 * 3:    6,
     0.3 * 4:    7,
     0.3 * 5:    9,
     0.3 * 6:    11,
@@ -47,22 +43,47 @@ NOTE_AXIS_MAP_CDP = {
     0.3 * 9:    16,
     0.3 * 10:   18,
     0.3 * 11:   19,
+    0.3 * 12:   21,
+    0.3 * 13:   23,
+    0.3 * 14:   24,
+    0.3 * 15:   26,
+    0.3 * 16:   28,
+    0.3 * 17:   30,
+    0.3 * 18:   31,
+    0.3 * 19:   33,
+    0.3 * 20:   35,
+    0.3 * 21:   36,
+    0.3 * 22:   38,
+    0.3 * 23:   40,
 }
 
 NOTE_AXIS_MAP_CDP_BLACK = {
-    0.3 * -6.5: None,
-    0.3 * -5.5: 10,
-    0.3 * -4.5: -8,
-    0.3 * -3.5: -6,
-    0.3 * -2.5: None,
-    0.3 * -1.5: -3,
-    0.3 * 0.0: 1,       # first black key, 0-1.5x
-    0.3 * 1.5: 3,       # second, 1.5x-2.5x
-    0.3 * 2.5: None,    # nothing, 2.5x-3.5x
-    0.3 * 3.5: 6,       # third, 3.5x-4.5x
-    0.3 * 4.5: 8,       # 4: 4.5x-5.5x
-    0.3 * 5.5: 10,      # 5: 5.5x-6.5x
-    0.3 * 6.5: None,    # nothing: 6.5x-7.5x
+    0.3 * 0.0:  1,       # first black key, 0-1.5x
+    0.3 * 1.5:  3,       # second, 1.5x-2.5x
+    0.3 * 2.5:  5,       # third, 2.5x-3.5x
+    0.3 * 3.5:  None,    # nothing, 3.5x-4.5x
+    0.3 * 4.5:  8,       # 4: 4.5x-5.5x
+    0.3 * 5.5:  10,      # 5: 5.5x-6.5x
+    0.3 * 6.5:  None,    # nothing: 6.5x-7.5x
+
+    0.3 * 7.5:  13,
+    0.3 * 8.5:  15,
+    0.3 * 9.5:  17,
+    0.3 * 10.5: None,
+    0.3 * 11.5: 20,
+    0.3 * 12.5: 22,
+    0.3 * 13.5: None,
+
+    0.3 * 14.5: 25,
+    0.3 * 15.5: 27,
+    0.3 * 16.5: 29,
+    0.3 * 17.5: None,
+    0.3 * 18.5: 32,
+    0.3 * 19.5: 34,
+    0.3 * 20.5: None,
+
+    0.3 * 21.5: 37,
+    0.3 * 22.5: 39,
 }
 
 NOTE_THRESHOLD_CDP_BLACK = 0.75
@@ -74,7 +95,14 @@ DEVICE_FILTER_CDP = {
     0x060213A2: "cdp/right_ankle",
     0x060212E6: "cdp/right_ankle",
     0x06021359: "cdp/left_ankle",
-    0x06021351: "cdp/testing"
+    0x06021351: "cdp/testing",
+    0x06021379: "cdp/testing",
+    0x06021348: "cdp/right",
+    0x06021349: "cdp/left",
+    0x0602139F: "cdp/left",
+    0x06021368: "cdp/right",
+    0x06021395: "cdp/left",
+    0x06021356: "cdp/right",
 }
 
 note_info = {}
@@ -93,6 +121,7 @@ def handle_position_cdp_music(serial, position, user_data):
     result = []
 
     if position is not None:
+        position = [(a - b) * c for a, b, c in zip(position, ORIGIN, DIRECTION)]
         cdp_pos[serial] = position
 
     if user_data is None or not len(user_data) or len(user_data) < 15:
@@ -124,10 +153,11 @@ def handle_position_cdp_music(serial, position, user_data):
             else:
                 note = map_note_cdp(pos[0])
 
-            result.append(osc_midi_note_on(serial, note))
+            if not note_last_block(serial):
+                result.append(osc_midi_note_on(serial, note))
 
-            if params.verbose:
-                print("{:08X}: note: {}".format(serial, note))
+                if params.verbose:
+                    print("{:08X}: note: {}".format(serial, note))
 
     if len(result):
         return result
@@ -142,6 +172,7 @@ def handle_position_cdp(serial, position, user_data):
     result = []
 
     if position is not None:
+        position = [a - b for a, b in zip(position, ORIGIN)]  # TODO: Maybe don't remap unless Peter needs
         result.append(osc_position(name, position))
 
     if user_data is None or not len(user_data) or len(user_data) < 15:
@@ -182,7 +213,7 @@ def note_last_block(serial):
     now = time.time()
     block = False
 
-    if (serial in note_last) and (now - note_last[serial]) <= 0.35:
+    if (serial in note_last) and (now - note_last[serial]) <= 0.50:
             block = True
 
     note_last[serial] = now  # should be above?
@@ -251,7 +282,7 @@ def osc_midi_note_on(serial, note, velocity=127):
 
 
 def osc_midi(serial, event, p1, p2):
-    return osc_message("/dance", serial, event, p1, p2)
+    return osc_message("/midi/dancer", event, p1, p2)
 
 
 def osc_message(path, *data):
@@ -267,6 +298,9 @@ def display_position(serial, position, data):
     if position is None:
         pos = "-".rjust(12) * 3 + "\t"
     else:
+        if params.music:
+            position = [(a - b) * c for a, b, c in zip(position, ORIGIN, DIRECTION)]
+
         pos = " ".join(str(round(p, 3)).rjust(12) for p in position)
 
     # print("{:08X}: {}\t{}".format(serial, pos, data))
