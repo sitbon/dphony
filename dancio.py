@@ -91,21 +91,22 @@ NOTE_AXIS_MAP_CDP_BLACK = {
 NOTE_THRESHOLD_CDP_BLACK = 0.75
 
 DEVICE_FILTER_CDP = {
-    # 0x060212E6: "cdp/left_hand",
-    0x0602136F: "cdp/left_ankle",
-    0x06021367: "cdp/right_ankle",
-    0x060213A2: "cdp/right_ankle",
-    0x060212E6: "cdp/right_ankle",
-    0x06021359: "cdp/left_ankle",
-    0x06021351: "cdp/testing",
-    0x06021379: "cdp/testing",
-    0x06021348: "cdp/right",
-    0x06021349: "cdp/left",
-    0x0602139F: "cdp/left",
-    0x06021368: "cdp/right",
-    0x06021395: "cdp/left",
-    0x06021356: "cdp/right",
+
+    0x0602139F: "pianist/kevin/left",
+    0x06021348: "pianist/kevin/right",
+    0x06021394: "pianist/sergio/left",
+    0x06021373: "pianist/sergio/right",
+    0x06021379: "pianist/angie/left",
+    0x06021345: "pianist/angie/right",
+
+    0x06021349: "dancer/right-ankle",
+    0x06021395: "dancer/left-ankle",
+
+    0x0602137E: "tramp/left",
+    0x06021340: "tramp/right",
+
 }
+
 
 note_info = {}
 note_last = {}
@@ -364,11 +365,11 @@ def osc_wrist(*args):
 def osc_gesture(gesture, serial, *args):
     global sequence_event
     sequence_event += 1
-    return osc_message("/gesture/dancer/{}/{}".format(serial, gesture), sequence_event, *args)
+    return osc_message("/gesture/{}/{}".format(serial, gesture), sequence_event, *args)
 
 
 def osc_position(serial, position):
-    return osc_message("/position/dancer/{}".format(serial), position)
+    return osc_message("/position/{}".format(serial), position)
 
 
 def osc_midi_note_off(serial, note, velocity=0):
