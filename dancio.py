@@ -29,7 +29,7 @@ MIDI_EVENT_PITCH_BEND_CHANGE = 0xE0
 
 NOTE_BASE = 41
 
-ORIGIN = (2.895 + 0.6, -6.595, 0.0)
+ORIGIN = (-4.28, -12.89, 0)
 DIRECTION = (-1, -1, 1)
 
 NOTE_AXIS_MAP_CDP = {
@@ -125,7 +125,7 @@ def handle_position_cdp_music(serial, position, user_data):
     result = []
 
     if position is not None:
-        position = [(a - b) * c for a, b, c in zip(position, ORIGIN, DIRECTION)]
+        position = [(a * b) - c for a, b, c in zip(position, DIRECTION, ORIGIN)]
 
         position = median_filter_update(serial, position)
 
