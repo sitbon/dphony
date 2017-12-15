@@ -29,7 +29,7 @@ MIDI_EVENT_PITCH_BEND_CHANGE = 0xE0
 
 NOTE_BASE = 41
 
-ORIGIN = (-4.28, -12.89, 0)
+ORIGIN = (-5.79, -12.89, 0)
 DIRECTION = (-1, -1, 1)
 
 NOTE_AXIS_MAP_CDP = {
@@ -94,13 +94,16 @@ DEVICE_FILTER_CDP = {
 
     0x0602139F: "pianist/kevin/left",
     0x06021348: "pianist/kevin/right",
-    0x06021394: "pianist/sergio/left",
+    0x06021368: "pianist/sergio/left",
     0x06021373: "pianist/sergio/right",
     0x06021379: "pianist/angie/left",
     0x06021345: "pianist/angie/right",
 
     0x06021349: "dancer/right-ankle",
     0x06021395: "dancer/left-ankle",
+    0x06021356: "dancer/left-ankle",
+    0x0602134F: "dancer/wand",
+    0x06021367: "dancer/wand",
 
     0x0602137E: "tramp/left",
     0x06021340: "tramp/right",
@@ -129,7 +132,7 @@ def handle_position_cdp_music(serial, position, user_data):
         position = [(a * b) - c for a, b, c in zip(position, DIRECTION, ORIGIN)]
         position = median_filter_update(serial, position)
 
-        if position is not None:
+        if position is not None and "tramp" not in name:
             cdp_pos[serial] = position
 
     if user_data is None or not len(user_data) or len(user_data) < 15:
@@ -183,7 +186,7 @@ def handle_position_cdp(serial, position, user_data):
         position = [a * b for a, b in zip(position, DIRECTION)]
         position = median_filter_update(serial, position)
 
-        if position is not None:  # and not reject_position(serial, position):
+        if position is not None and "tramp" not in name:  # and not reject_position(serial, position):
             result.append(osc_position(name, position))
 
     if user_data is None or not len(user_data) or len(user_data) < 15:
