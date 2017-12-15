@@ -127,8 +127,10 @@ def handle_position_cdp_music(serial, position, user_data):
     if position is not None:
         position = [(a - b) * c for a, b, c in zip(position, ORIGIN, DIRECTION)]
 
-        if not reject_position(serial, position):
-            cdp_pos[serial] = position
+        position = median_filter_update(serial, position)
+
+        if position is not None and not reject_position(serial, position):
+            result.append(osc_position(name, position))
 
     if user_data is None or not len(user_data) or len(user_data) < 15:
         if len(result):
