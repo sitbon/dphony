@@ -102,6 +102,8 @@ DEVICE_FILTER_CDP = {
     0x06021349: "dancer/right-ankle",
     0x06021395: "dancer/left-ankle",
     0x06021356: "dancer/left-ankle",
+    0x06021344: "dancer/left-wrist",
+    0x0602135C: "dancer/right-wrist",
     0x0602134F: "dancer/wand",
     0x06021367: "dancer/wand",
 
