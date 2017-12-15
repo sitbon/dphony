@@ -1,4 +1,4 @@
 
 
-def calculate_pointing(serial, position):
+def calculate_pointing(name, position):
     return

@@ -190,8 +190,8 @@ def handle_position_cdp(serial, position, user_data):
         position = median_filter_update(serial, position)
 
         if position is not None:  # and not reject_position(serial, position):
-            if "dancer" in name:
-                vec = wand.calculate_pointing(serial, position)
+            if name in ("dancer/left-wrist", "dancer/right-wrist", "dancer/wand"):
+                vec = wand.calculate_pointing(name, position)
 
                 if vec is not None:
                     result.append(osc_gesture("pointing", "dancer", *vec))
