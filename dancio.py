@@ -151,7 +151,7 @@ def handle_position_cdp_music(serial, position, user_data):
             cdp_dedup[serial] = sequence
 
         if (mask & 2) and (serial in cdp_pos):
-            pos = cdp_pos[serial]
+            pos = cdp_pos[serial][-1]
 
             if pos[1] >= NOTE_THRESHOLD_CDP_BLACK:
                 note = map_note_cdp_black(pos[0])
