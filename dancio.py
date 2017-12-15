@@ -11,6 +11,8 @@ import random
 import threading
 import traceback
 import socket
+import math
+
 import ipaddress
 import forward
 import parse
@@ -110,6 +112,7 @@ note_last = {}
 
 cdp_pos = {}
 cdp_dedup = {}
+cdp_reject = {}
 
 
 def handle_position_cdp_music(serial, position, user_data):
@@ -122,7 +125,9 @@ def handle_position_cdp_music(serial, position, user_data):
 
     if position is not None:
         position = [(a - b) * c for a, b, c in zip(position, ORIGIN, DIRECTION)]
-        cdp_pos[serial] = position
+
+        if not reject_position(serial, position):
+            cdp_pos[serial] = position
 
     if user_data is None or not len(user_data) or len(user_data) < 15:
         if len(result):
@@ -154,7 +159,7 @@ def handle_position_cdp_music(serial, position, user_data):
                 note = map_note_cdp(pos[0])
 
             if not note_last_block(serial):
-                result.append(osc_midi_note_on(serial, note))
+                result.append(osc_midi_note_on(name, note))
 
                 if params.verbose:
                     print("{:08X}: note: {}".format(serial, note))
@@ -172,8 +177,16 @@ def handle_position_cdp(serial, position, user_data):
     result = []
 
     if position is not None:
-        position = [a - b for a, b in zip(position, ORIGIN)]  # TODO: Maybe don't remap unless Peter needs
-        result.append(osc_position(name, position))
+        position = [a * b for a, b in zip(position, DIRECTION)]
+
+        # if not reject_position(serial, position):
+        #     cdp_pos[serial] = position
+        #     result.append(osc_position(name, position))
+
+        position = median_filter_update(serial, position)
+
+        if position is not None and not reject_position(serial, position):
+            result.append(osc_position(name, position))
 
     if user_data is None or not len(user_data) or len(user_data) < 15:
         if len(result):
@@ -209,11 +222,96 @@ def handle_position_cdp(serial, position, user_data):
         return result
 
 
+def median_filter_update(serial, position):
+    poss = cdp_pos.setdefault(serial, [])
+    poss.append(position)
+
+    if len(poss) < 10:
+        return None
+
+    position = median(p[0] for p in poss),\
+               median(p[1] for p in poss),\
+               median(p[2] for p in poss)
+
+    cdp_pos[serial] = []
+    return position
+
+
+def reject_position(serial, pos):
+    reject = False
+    poss = cdp_pos.get(serial, [])
+
+    if len(poss):
+        pos_prev = poss[-1]
+    else:
+        pos_prev = None
+
+    if pos_prev is not None:
+        dz = abs(pos[2] - pos_prev[2])
+
+        if dz >= 1:
+            reject = True
+            print("{:08X}: reject dz={}".format(serial, dz))
+
+        if (-1.5 >= pos) or (pos[2] >= 2.5):
+            reject = True
+            print("{:08X}: reject z={}".format(serial, pos[2]))
+
+        else:
+            pdist = planar_distance(pos_prev, pos)
+
+            if (0.1 >= pdist) or (pdist >= 1):
+                reject = True
+
+                if pdist >= 1:
+                    print("{:08X}: reject large pdist={}".format(serial, pdist))
+            else:
+                dist = distance(pos_prev, pos)
+
+                if (0.1 >= dist) or (dist >= 1):
+                    reject = True
+
+                    if dist >= 1:
+                        print("{:08X}: reject large dist={}".format(serial, dist))
+
+    if serial not in cdp_reject:
+        cdp_reject[serial] = int(reject)
+    else:
+        cdp_reject[serial] += int(reject)
+
+        if cdp_reject[serial] > 10:
+            cdp_reject[serial] = 0
+            reject = False
+
+    return reject
+
+
+def distance(p1, p2):
+    return math.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2 + (p2[2] - p1[2])**2)
+
+
+def planar_distance(p1, p2):
+    return math.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
+
+
+def median(arr):
+    sarr = sorted(arr)
+    count = len(sarr)
+
+    if not count % 2:
+        return (sarr[count / 2] + sarr[count / 2 - 1]) / 2.0
+
+    return sarr[count / 2]
+
+
 def note_last_block(serial):
+    # For now, rely on sensor hysteresis
+    return False
+
     now = time.time()
     block = False
 
-    if (serial in note_last) and (now - note_last[serial]) <= 0.50:
+    if (serial in note_last) and (now - note_last[serial]) <= 0.10:
             block = True
 
     note_last[serial] = now  # should be above?
