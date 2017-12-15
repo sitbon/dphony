@@ -17,6 +17,7 @@ import ipaddress
 import forward
 import parse
 import OSC
+import wand
 
 
 MIDI_EVENT_NOTE_OFF = 0x80
@@ -155,7 +156,7 @@ def handle_position_cdp_music(serial, position, user_data):
         else:
             cdp_dedup[serial] = sequence
 
-        if (mask & 2) and (serial in cdp_pos):
+        if (mask & 2) and (serial in cdp_pos) and ("dancer" not in name):
             pos = cdp_pos[serial]
 
             if pos[1] >= NOTE_THRESHOLD_CDP_BLACK:
@@ -188,8 +189,15 @@ def handle_position_cdp(serial, position, user_data):
         position = [a * b for a, b in zip(position, DIRECTION)]
         position = median_filter_update(serial, position)
 
-        if position is not None and "tramp" not in name:  # and not reject_position(serial, position):
-            result.append(osc_position(name, position))
+        if position is not None:  # and not reject_position(serial, position):
+            if "dancer" in name:
+                vec = wand.calculate_pointing(serial, position)
+
+                if vec is not None:
+                    result.append(osc_gesture("pointing", "dancer", *vec))
+
+            if "tramp" not in name:
+                result.append(osc_position(name, position))
 
     if user_data is None or not len(user_data) or len(user_data) < 15:
         if len(result):
@@ -371,7 +379,7 @@ def osc_gesture(gesture, serial, *args):
 
 
 def osc_position(serial, position):
-    return osc_message("/position/{}".format(serial), position)
+    return osc_message("/position/{}".format(serial), *position)
 
 
 def osc_midi_note_off(serial, note, velocity=0):
