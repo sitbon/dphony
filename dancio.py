@@ -112,6 +112,7 @@ note_info = {}
 note_last = {}
 
 cdp_pos = {}
+cdp_pos_filt = {}
 cdp_dedup = {}
 cdp_reject = {}
 
@@ -126,11 +127,10 @@ def handle_position_cdp_music(serial, position, user_data):
 
     if position is not None:
         position = [(a * b) - c for a, b, c in zip(position, DIRECTION, ORIGIN)]
-
         position = median_filter_update(serial, position)
 
-        # if position is not None:  # and not reject_position(serial, position):
-        #     result.append(osc_position(name, position))
+        if position is not None:
+            cdp_pos[serial] = position
 
     if user_data is None or not len(user_data) or len(user_data) < 15:
         if len(result):
@@ -150,8 +150,8 @@ def handle_position_cdp_music(serial, position, user_data):
         else:
             cdp_dedup[serial] = sequence
 
-        if (mask & 2) and (serial in cdp_pos) and len(cdp_pos[serial]):
-            pos = cdp_pos[serial][-1]
+        if (mask & 2) and (serial in cdp_pos):
+            pos = cdp_pos[serial]
 
             if pos[1] >= NOTE_THRESHOLD_CDP_BLACK:
                 note = map_note_cdp_black(pos[0])
@@ -181,11 +181,6 @@ def handle_position_cdp(serial, position, user_data):
 
     if position is not None:
         position = [a * b for a, b in zip(position, DIRECTION)]
-
-        # if not reject_position(serial, position):
-        #     cdp_pos[serial] = position
-        #     result.append(osc_position(name, position))
-
         position = median_filter_update(serial, position)
 
         if position is not None:  # and not reject_position(serial, position):
@@ -226,7 +221,7 @@ def handle_position_cdp(serial, position, user_data):
 
 
 def median_filter_update(serial, position):
-    poss = cdp_pos.setdefault(serial, [])
+    poss = cdp_pos_filt.setdefault(serial, [])
     poss.append(position)
 
     if len(poss) < 5:
@@ -236,7 +231,7 @@ def median_filter_update(serial, position):
                median(p[1] for p in poss),\
                median(p[2] for p in poss)
 
-    cdp_pos[serial] = []
+    cdp_pos_filt[serial] = cdp_pos_filt[serial][-5:]
     return position
 
 
