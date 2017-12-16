@@ -16,6 +16,7 @@ import forward
 import parse
 import OSC
 import math
+import cleanup
 
 MIDI_EVENT_NOTE_OFF = 0x80
 MIDI_EVENT_NOTE_ON = 0x90
@@ -57,10 +58,10 @@ NOTE_AXIS_MAP_DCC = {
 
 TRIG_AXIS_MAP_DCC = (0, 2.8)
 
-DEVICE_FILTER_DCC = (0x00020001, )
-
 note_info = {}
 note_last = {}
+
+log_files = {}
 
 
 def transform_position(position):
@@ -82,6 +83,9 @@ def handle_position_music(serial, position):
     #     return
 
     position = transform_position(position)
+
+    if params.log:
+        log_position(serial, position)
 
     if serial not in note_info:
         note_info[serial] = None
@@ -119,41 +123,12 @@ def handle_position_music(serial, position):
 
 
 def handle_position(serial, position):
-    # if serial not in DEVICE_FILTER_DCC:
-    #     return
-
     position = transform_position(position)
+
+    if params.log:
+        log_position(serial, position)
+
     return osc_position(serial, position)
-
-
-def handle_position_lcm(serial, position):
-    global note_info
-
-    if serial not in note_info:
-        note_info[serial] = None
-
-    if note_info[serial] is None and (position[0] < 0):
-        note_info[serial] = map_note_lcm(position[1])
-        print("note: {} ON".format(note_info[serial]))
-        return osc_midi(serial, MIDI_EVENT_NOTE_ON, note_info[serial], 127)
-    elif note_info[serial] is not None and (position[0] > 0):
-        note = note_info[serial]
-        note_info[serial] = None
-        print("note: {} OFF".format(note))
-        return osc_midi(serial, MIDI_EVENT_NOTE_OFF, note, 0)
-    elif note_info[serial] is not None:
-        note_prev = note_info[serial]
-        note = map_note_lcm(position[1])
-        if note != note_prev:
-            note_info[serial] = note
-            print("note: {} -> {}".format(note_prev, note))
-            return osc_midi(serial, MIDI_EVENT_NOTE_OFF, note_prev, 0), osc_midi(serial, MIDI_EVENT_NOTE_ON, note, 127)
-        else:
-            value = min(127, int(round(abs(position[0])/1.5 * 127)))
-            # print("cc/{}".format(value))
-            return osc_midi(serial, MIDI_EVENT_CONTROL_CHANGE, 7, value)
-
-    return None
 
 
 def note_last_block(serial):
@@ -203,21 +178,48 @@ def display_position(serial, position):
     print("{:08X}: {}".format(serial, " ".join(str(p).rjust(12) for p in position)))
 
 
+def log_init():
+    try:
+        os.makedirs(params.log)
+    except OSError as exc:
+        if exc.errno != 17:
+            raise
+
+    global log_start
+    log_start = time.time()
+
+
+def log_position(serial, position):
+    fil = log_files.get(serial, None)
+
+    if fil is None:
+        fil = log_files[serial] = file(os.path.join(params.log, "{:08X}.csv".format(serial)), "w")
+
+    elapsed = time.time() - log_start
+    line = "{},{},{},{}\n".format(elapsed, *position)
+
+    fil.write(line)
+    fil.flush()
+
+
+def log_close_files():
+    for fil in log_files.values():
+        fil.flush()
+        fil.close()
+
+    log_files.clear()
+
+
 def main(args):
     if not args.out_port:
         args.out_port = args.port
 
     handler = parse.parse_dcc
 
-    if args.lcm:
-        handler = parse.parse_lcm
-
     if args.debug:
         position_handler = display_position
     else:
-        if args.lcm:
-            position_handler = handle_position_lcm
-        elif args.music:
+        if args.music:
             position_handler = handle_position_music
         else:
             position_handler = handle_position
@@ -229,6 +231,11 @@ def main(args):
         verbose=args.verbose,
         handler=lambda data: handler(data, position_handler)
     )
+
+    if params.log:
+        log_init()
+
+    cleanup.install(lambda: (log_close_files(), os._exit(0)))
 
     print(fwd)
     fwd.start()
@@ -242,13 +249,14 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--out', metavar='ADDR', required=True, help='destination address')
     parser.add_argument('-O', '--out-iface', metavar='ADDR', required=False, help='outgoing iface address (NOT name!)')
     parser.add_argument('-P', '--out-port', metavar='PORT', type=int, help='destination port')
-    parser.add_argument('-l', '--lcm', action='store_true', help='use lcm protocol for input')
     parser.add_argument('-v', '--verbose', action='store_true', help='verbose output')
     parser.add_argument('-D', '--debug', action='store_true', help='debug mode')
     parser.add_argument('-M', '--music', action='store_true', help='music system mode (default: video system mode)')
+    parser.add_argument('-l', '--log', metavar='LOGDIR', help='log positions to a folder, one file per drone')
 
     try:
-        main(parser.parse_args())
+        params = parser.parse_args()
+        main(params)
 
     except KeyboardInterrupt:
         pass
