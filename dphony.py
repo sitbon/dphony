@@ -28,42 +28,72 @@ MIDI_EVENT_PITCH_BEND_CHANGE = 0xE0
 
 NOTE_BASE = 60
 
-NOTE_AXIS_MAP_LCM = {
-    0.00: 0,
-    0.50: 2,
-    1.00: 4,
-    1.50: 6,
-    2.00: 7,
-}
-
-"""
-    Z: floor=653 waist=654
-    X: front=~0/0.75 back=3
-    Y: left=0 right=6.2 middle=~3
-"""
-
 # +x == stage right
 # +y == downstage
 NOTE_AXIS_MAP_DCC = {
-   -3.00: -7,
-   -2.00: -5,
-   -1.00: -4,
-    0.00: -2,
-    1.00: 0,
-    2.00: 2,
-    3.00: 4,
-    4.00: 5,
-    5.00: 7,
+    -10: None,
+
+    # -23: -40,
+    # -22: -38,
+    # -21: -36,
+    # -20: -35,
+    # -19: -33,
+    # -18: -31,
+    # -17: -30,
+    # -16: -28,
+    # -15: -26,
+    # -14: -24,
+    # -13: -23,
+    # -12: -21,
+    # -11: -19,
+    # -10: -18,
+    -9: -16,
+    -8: -14,
+    -7: -12,
+    -6: -11,
+    -5: -9,
+    -4: -7,
+    -3: -5,
+    -2: -4,
+    -1: -2,
+    0: 0,
+    1: 2,
+    2: 4,
+    3: 5,
+    4: 7,
+    5: 9,
+    6: 11,
+    7: 12,
+    8: 14,
+    9: 16,
+    # 10: 18,
+    # 11: 19,
+    # 12: 21,
+    # 13: 23,
+    # 14: 24,
+    # 15: 26,
+    # 16: 28,
+    # 17: 30,
+    # 18: 31,
+    # 19: 33,
+    # 20: 35,
+    # 21: 36,
+    # 22: 38,
+    # 23: 40,
+
+    10: None
 }
 
-TRIG_AXIS_MAP_DCC = (0, 2.8)
+TRIG_AXIS_MAP_DCC = (0, 2.4)
+
+pre_trig = {}
 
 note_info = {}
 note_last = {}
 
 log_files = {}
 
-uwb_rotation_angle = math.degrees(225.73)
+uwb_rotation_angle = math.radians(225.73)
 uwb_origin = (-0.25, -25.59, -14.85)  # origin for Cow Palace
 
 
@@ -88,34 +118,30 @@ def handle_position_music(serial, position):
     if serial not in note_info:
         note_info[serial] = None
 
-    if (note_info[serial] is None) and (position[2] < TRIG_AXIS_MAP_DCC[1]):
-        note_info[serial] = map_note_dcc(position[1])
+    if note_info[serial] is None:
+        ptrig = pre_trig.get(serial, None)
 
-        if not note_last_block(serial):
-            print("[{:08X}] note: {} ON".format(serial, note_info[serial]))
-            return osc_midi(serial, MIDI_EVENT_NOTE_ON, note_info[serial], 127)
+        if not ptrig:
+            if position[2] > TRIG_AXIS_MAP_DCC[1]:
+                pre_trig[serial] = True
+            else:
+                pre_trig[serial] = False
+        else:
+            if position[2] <= TRIG_AXIS_MAP_DCC[1]:
+                note_info[serial] = map_note_dcc(position[1])
+
+                if (note_info[serial] is not None) and (not note_last_block(serial)):
+                    print("[{:08X}] note: {} ON".format(serial, note_info[serial]))
+                    return osc_midi(serial, MIDI_EVENT_NOTE_ON, note_info[serial], 127)
 
     elif (note_info[serial] is not None) and (position[2] > TRIG_AXIS_MAP_DCC[1]):
         note = note_info[serial]
         note_info[serial] = None
+        pre_trig[serial] = False
 
         if not note_last_block(serial):
             print("[{:08X}] note: {} OFF".format(serial, note))
             return  # osc_midi(serial, MIDI_EVENT_NOTE_OFF, note, 0)
-
-    elif note_info[serial] is not None:
-        note_prev = note_info[serial]
-        note = map_note_dcc(position[1])
-        if note != note_prev:
-            note_info[serial] = note
-            print("[{:08X}] note: {} -> {}".format(serial, note_prev, note))
-            # return osc_midi(serial, MIDI_EVENT_NOTE_OFF, note_prev, 0), osc_midi(serial, MIDI_EVENT_NOTE_ON, note, 127)
-            return osc_midi(serial, MIDI_EVENT_NOTE_ON, note, 127)
-        else:
-            scaled = max(0, position[2] - TRIG_AXIS_MAP_DCC[0]) / float(TRIG_AXIS_MAP_DCC[1] - TRIG_AXIS_MAP_DCC[0])
-            value = min(127, int(round(scaled/1.5 * 127)))
-            # print("[{:08X}] cc/{}".format(serial, value))
-            return  # osc_midi(serial, MIDI_EVENT_CONTROL_CHANGE, 7, value)
 
     return None
 
@@ -133,7 +159,7 @@ def note_last_block(serial):
     now = time.time()
     block = False
 
-    if (serial in note_last) and (now - note_last[serial]) <= 0.35:
+    if (serial in note_last) and (now - note_last[serial]) <= 0.500:
             block = True
 
     note_last[serial] = now

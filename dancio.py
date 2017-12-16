@@ -34,6 +34,8 @@ ORIGIN = (-5.79, -12.89, 0)
 DIRECTION = (-1, -1, 1)
 
 NOTE_AXIS_MAP_CDP = {
+    0.3 * -1:   None,
+
     0.3 * 0:    0,
     0.3 * 1:    2,
     0.3 * 2:    4,
@@ -58,9 +60,13 @@ NOTE_AXIS_MAP_CDP = {
     0.3 * 21:   36,
     0.3 * 22:   38,
     0.3 * 23:   40,
+
+    0.3 * 24:   None,
 }
 
 NOTE_AXIS_MAP_CDP_BLACK = {
+    0.3 * -1.:  None,
+
     0.3 * 0.0:  1,       # first black key, 0-1.5x
     0.3 * 1.5:  3,       # second, 1.5x-2.5x
     0.3 * 2.5:  5,       # third, 2.5x-3.5x
@@ -87,33 +93,40 @@ NOTE_AXIS_MAP_CDP_BLACK = {
 
     0.3 * 21.5: 37,
     0.3 * 22.5: 39,
+
+    0.3 * 23.5: None,
 }
 
 NOTE_THRESHOLD_CDP_BLACK = 0.75
 
 DEVICE_FILTER_CDP = {
 
-    0x0602139F: "pianist/kevin/left",
-    0x0602134F: "pianist/kevin/left",
-    0x06021348: "pianist/kevin/right",
-    0x060213A2: "pianist/kevin/right",
-    0x06021368: "pianist/sergio/left",
-    0x0602136A: "pianist/sergio/left",
     0x06021373: "pianist/sergio/right",
-    0x06021351: "pianist/sergio/right",
-    0x06021379: "pianist/angie/left",
-    0x06021359: "pianist/angie/left",
-    0x06021345: "pianist/angie/right",
+    0x06021394: "pianist/sergio/left",
+    0x06021368: "pianist/sergio/spare",
 
+    0x06021348: "pianist/kevin/right",
+    0x0602139F: "pianist/kevin/left",
+    0x06021351: "pianist/kevin/right",
+
+    0x06021345: "pianist/angie/right",
+    0x06021379: "pianist/angie/left",
+    0x06021356: "pianist/angie/spare",
+
+    0x0602135C: "dancer/left-wrist",
+    0x06021344: "dancer/right-wrist",
     0x06021349: "dancer/right-ankle",
     0x06021395: "dancer/left-ankle",
-    0x06021356: "dancer/left-ankle",
-    0x06021344: "dancer/left-wrist",
-    0x0602135C: "dancer/right-wrist",
-    0x06021367: "dancer/wand",
+    0x0602134F: "dancer/wand",
+    0x06021387: "dancer/spare",
+    0x06021367: "dancer/spare",
 
-    0x0602137E: "tramp/left",
     0x06021340: "tramp/right",
+    0x0602137E: "tramp/left",
+    0x060213A2: "tramp/spare",
+
+    0x06021359: "none/spare",
+    0x0602136A: "none/spare",
 
 }
 
@@ -171,7 +184,7 @@ def handle_position_cdp_music(serial, position, user_data):
             else:
                 note = map_note_cdp(pos[0])
 
-            if not note_last_block(serial):
+            if (note is not None) and (not note_last_block(serial)):
                 result.append(osc_midi_note_on(name, note))
 
                 if params.verbose:
