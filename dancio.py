@@ -94,10 +94,15 @@ NOTE_THRESHOLD_CDP_BLACK = 0.75
 DEVICE_FILTER_CDP = {
 
     0x0602139F: "pianist/kevin/left",
+    0x0602134F: "pianist/kevin/left",
     0x06021348: "pianist/kevin/right",
+    0x060213A2: "pianist/kevin/right",
     0x06021368: "pianist/sergio/left",
+    0x0602136A: "pianist/sergio/left",
     0x06021373: "pianist/sergio/right",
+    0x06021351: "pianist/sergio/right",
     0x06021379: "pianist/angie/left",
+    0x06021359: "pianist/angie/left",
     0x06021345: "pianist/angie/right",
 
     0x06021349: "dancer/right-ankle",
@@ -105,7 +110,6 @@ DEVICE_FILTER_CDP = {
     0x06021356: "dancer/left-ankle",
     0x06021344: "dancer/left-wrist",
     0x0602135C: "dancer/right-wrist",
-    0x0602134F: "dancer/wand",
     0x06021367: "dancer/wand",
 
     0x0602137E: "tramp/left",
