@@ -63,11 +63,11 @@ note_last = {}
 
 log_files = {}
 
+uwb_rotation_angle = math.degrees(225.73)
+uwb_origin = (-0.25, -25.59, -14.85)  # origin for Cow Palace
+
 
 def transform_position(position):
-
-    uwb_rotation_angle = math.degrees(225.73)
-    uwb_origin = (-0.25, -25.59, -14.85)  # origin for Cow Palace
 
     inx, iny, inz = position
     crot = math.cos(uwb_rotation_angle)
@@ -79,8 +79,6 @@ def transform_position(position):
 
 
 def handle_position_music(serial, position):
-    # if serial not in DEVICE_FILTER_DCC:
-    #     return
 
     position = transform_position(position)
 
