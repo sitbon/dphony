@@ -30,7 +30,7 @@ MIDI_EVENT_PITCH_BEND_CHANGE = 0xE0
 
 NOTE_BASE = 41
 
-ORIGIN = (-5.79, -12.89, 0)
+ORIGIN = (-6.86 + 0.3*3, -12, 0)
 DIRECTION = (-1, -1, 1)
 
 NOTE_AXIS_MAP_CDP = {
@@ -60,8 +60,19 @@ NOTE_AXIS_MAP_CDP = {
     0.3 * 21:   36,
     0.3 * 22:   38,
     0.3 * 23:   40,
+    0.3 * 24:   42,
+    0.3 * 25:   43,
+    0.3 * 26:   45,
+    0.3 * 27:   47,
+    0.3 * 28:   48,
+    0.3 * 29:   50,
+    0.3 * 30:   52,
+    0.3 * 31:   54,
+    0.3 * 32:   55,
+    0.3 * 33:   57,
+    0.3 * 34:   59,
 
-    0.3 * 24:   None,
+    0.3 * 35:   None,
 }
 
 NOTE_AXIS_MAP_CDP_BLACK = {
@@ -93,8 +104,23 @@ NOTE_AXIS_MAP_CDP_BLACK = {
 
     0.3 * 21.5: 37,
     0.3 * 22.5: 39,
+    0.3 * 23.5: 41,
+    0.3 * 24.5: None,
 
-    0.3 * 23.5: None,
+    0.3 * 25.5: 44,
+    0.3 * 25.5: 46,
+    0.3 * 26.5: None,
+
+    0.3 * 27.5: 49,
+    0.3 * 28.5: 51,
+    0.3 * 29.5: 53,
+    0.3 * 30.5: None,
+
+    0.3 * 31.5: 56,
+    0.3 * 31.5: 58,
+    0.3 * 32.5: None,
+
+    0.3 * 33.5: None,
 }
 
 NOTE_THRESHOLD_CDP_BLACK = 0.75
@@ -117,9 +143,9 @@ DEVICE_FILTER_CDP = {
     0x06021344: "dancer/right-wrist",
     0x06021349: "dancer/right-ankle",
     0x06021395: "dancer/left-ankle",
+    0x06021367: "dancer/wand",
     0x0602134F: "dancer/wand",
     0x06021387: "dancer/spare",
-    0x06021367: "dancer/spare",
 
     0x06021340: "tramp/right",
     0x0602137E: "tramp/left",
@@ -139,6 +165,8 @@ cdp_pos_filt = {}
 cdp_dedup = {}
 cdp_reject = {}
 
+log_files = {}
+
 
 def handle_position_cdp_music(serial, position, user_data):
     if serial not in DEVICE_FILTER_CDP:
@@ -156,6 +184,9 @@ def handle_position_cdp_music(serial, position, user_data):
             cdp_pos[serial] = position
 
     if user_data is None or not len(user_data) or len(user_data) < 15:
+        if params.log and (position is not None):
+            log_position(serial, position, False)
+
         if len(result):
             return result
         return
@@ -163,6 +194,7 @@ def handle_position_cdp_music(serial, position, user_data):
     typ = struct.unpack("<B", user_data[:1])[0]
 
     user_data = user_data[1:]
+    has_event = False
 
     if typ == 4:
         sequence, mask, w_ang, v_ang, h_ang, tap_d, tap_v, omni_d, omni_v, shake_d, shake_v, shake_du, lasso_d, lasso_v = struct.unpack(
@@ -185,10 +217,14 @@ def handle_position_cdp_music(serial, position, user_data):
                 note = map_note_cdp(pos[0])
 
             if (note is not None) and (not note_last_block(serial)):
+                has_event = 1
                 result.append(osc_midi_note_on(name, note))
 
                 if params.verbose:
                     print("{:08X}: note: {}".format(serial, note))
+
+    if params.log and (serial in cdp_pos):
+        log_position(serial, cdp_pos[serial], has_event)
 
     if len(result):
         return result
@@ -254,14 +290,14 @@ def median_filter_update(serial, position):
     poss = cdp_pos_filt.setdefault(serial, [])
     poss.append(position)
 
-    if len(poss) < 5:
+    if len(poss) < 3:
         return None
 
     position = median(p[0] for p in poss),\
                median(p[1] for p in poss),\
                median(p[2] for p in poss)
 
-    cdp_pos_filt[serial] = cdp_pos_filt[serial][-5:]
+    cdp_pos_filt[serial] = cdp_pos_filt[serial][-3:]
     return position
 
 
@@ -433,6 +469,30 @@ def display_position(serial, position, data):
     print("{:08X}: {}".format(serial, pos))
 
 
+def log_init():
+    try:
+        os.makedirs(params.log)
+    except OSError as exc:
+        if exc.errno != 17:
+            raise
+
+    global log_start
+    log_start = time.time()
+
+
+def log_position(serial, position, hit_event):
+    fil = log_files.get(serial, None)
+
+    if fil is None:
+        fil = log_files[serial] = file(os.path.join(params.log, "{:08X}.csv".format(serial)), "w")
+
+    elapsed = time.time() - log_start
+    line = "{},{},{},{},{}\n".format(elapsed, 1 if hit_event else 0, *position)
+
+    fil.write(line)
+    fil.flush()
+
+
 def main(args):
     if not args.out_port:
         args.out_port = args.port
@@ -455,6 +515,9 @@ def main(args):
         handler=lambda data: handler(data, position_handler)
     )
 
+    if params.log:
+        log_init()
+
     print(fwd)
     fwd.start()
 
@@ -472,6 +535,7 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--verbose', action='store_true', help='verbose output')
     parser.add_argument('-D', '--debug', action='store_true', help='debug mode')
     parser.add_argument('-M', '--music', action='store_true', help='music system mode (default: video system mode)')
+    parser.add_argument('-l', '--log', metavar='LOGDIR', help='log positions to a folder, one file per drone')
 
 
     try:
