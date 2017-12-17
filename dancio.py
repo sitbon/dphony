@@ -30,7 +30,7 @@ MIDI_EVENT_PITCH_BEND_CHANGE = 0xE0
 
 NOTE_BASE = 41
 
-ORIGIN = (-6.86 + 0.3*3, -12, 0)
+ORIGIN_DEFAULT = (-6.86 + 0.3*3, -12, 0)
 DIRECTION = (-1, -1, 1)
 
 NOTE_AXIS_MAP_CDP = {
@@ -127,32 +127,32 @@ NOTE_THRESHOLD_CDP_BLACK = 0.75
 
 DEVICE_FILTER_CDP = {
 
-    0x06021373: "pianist/sergio/right",
-    0x06021394: "pianist/sergio/left",
-    0x06021368: "pianist/sergio/spare",
+    0x06021373: ("pianist/sergio/right", ORIGIN_DEFAULT),
+    0x06021394: ("pianist/sergio/left", ORIGIN_DEFAULT),
+    0x06021368: ("pianist/sergio/spare", ORIGIN_DEFAULT),
 
-    0x06021348: "pianist/kevin/right",
-    0x0602139F: "pianist/kevin/left",
-    0x06021351: "pianist/kevin/right",
+    0x06021348: ("pianist/kevin/right", ORIGIN_DEFAULT),
+    0x0602139F: ("pianist/kevin/left", ORIGIN_DEFAULT),
+    0x06021351: ("pianist/kevin/right", ORIGIN_DEFAULT),
 
-    0x06021345: "pianist/angie/right",
-    0x06021379: "pianist/angie/left",
-    0x06021356: "pianist/angie/spare",
+    0x06021345: ("pianist/angie/right", ORIGIN_DEFAULT),
+    0x06021379: ("pianist/angie/left", ORIGIN_DEFAULT),
+    0x06021356: ("pianist/angie/spare", ORIGIN_DEFAULT),
 
-    0x0602135C: "dancer/left-wrist",
-    0x06021344: "dancer/right-wrist",
-    0x06021349: "dancer/right-ankle",
-    0x06021395: "dancer/left-ankle",
-    0x06021367: "dancer/wand",
-    0x0602134F: "dancer/wand",
-    0x06021387: "dancer/spare",
+    0x0602135C: ("dancer/left-wrist", ORIGIN_DEFAULT),
+    0x06021344: ("dancer/right-wrist", ORIGIN_DEFAULT),
+    0x06021349: ("dancer/right-ankle", ORIGIN_DEFAULT),
+    0x06021395: ("dancer/left-ankle", ORIGIN_DEFAULT),
+    0x06021367: ("dancer/wand", ORIGIN_DEFAULT),
+    0x0602134F: ("dancer/wand", ORIGIN_DEFAULT),
+    0x06021387: ("dancer/spare", ORIGIN_DEFAULT),
 
-    0x06021340: "tramp/right",
-    0x0602137E: "tramp/left",
-    0x060213A2: "tramp/spare",
+    0x06021340: ("tramp/right", ORIGIN_DEFAULT),
+    0x0602137E: ("tramp/left", ORIGIN_DEFAULT),
+    0x060213A2: ("tramp/spare", ORIGIN_DEFAULT),
 
-    0x06021359: "none/spare",
-    0x0602136A: "none/spare",
+    0x06021359: ("none/spare", ORIGIN_DEFAULT),
+    0x0602136A: ("none/spare", ORIGIN_DEFAULT),
 
 }
 
@@ -172,20 +172,20 @@ def handle_position_cdp_music(serial, position, user_data):
     if serial not in DEVICE_FILTER_CDP:
         return
 
-    name = DEVICE_FILTER_CDP[serial]
+    name, origin = DEVICE_FILTER_CDP[serial]
 
     result = []
 
     if position is not None:
-        position = [(a * b) - c for a, b, c in zip(position, DIRECTION, ORIGIN)]
-        position = median_filter_update(serial, position)
+        position = [(a * b) - c for a, b, c in zip(position, DIRECTION, origin)]
+        # position = median_filter_update(serial, position)
 
         if position is not None and "tramp" not in name:
             cdp_pos[serial] = position
 
     if user_data is None or not len(user_data) or len(user_data) < 15:
         if params.log and (position is not None):
-            log_position(serial, position, False)
+            log_position(serial, position, False, 0)
 
         if len(result):
             return result
@@ -195,6 +195,7 @@ def handle_position_cdp_music(serial, position, user_data):
 
     user_data = user_data[1:]
     has_event = False
+    event_note = 0
 
     if typ == 4:
         sequence, mask, w_ang, v_ang, h_ang, tap_d, tap_v, omni_d, omni_v, shake_d, shake_v, shake_du, lasso_d, lasso_v = struct.unpack(
@@ -204,6 +205,9 @@ def handle_position_cdp_music(serial, position, user_data):
             return
         else:
             cdp_dedup[serial] = sequence
+
+        if mask & 2:
+            has_event = 1
 
         if (mask & 2) and (serial in cdp_pos) and ("dancer" not in name):
             pos = cdp_pos[serial]
@@ -217,14 +221,14 @@ def handle_position_cdp_music(serial, position, user_data):
                 note = map_note_cdp(pos[0])
 
             if (note is not None) and (not note_last_block(serial)):
-                has_event = 1
+                event_note = note
                 result.append(osc_midi_note_on(name, note))
 
                 if params.verbose:
                     print("{:08X}: note: {}".format(serial, note))
 
     if params.log and (serial in cdp_pos):
-        log_position(serial, cdp_pos[serial], has_event)
+        log_position(serial, cdp_pos[serial], has_event, event_note)
 
     if len(result):
         return result
@@ -234,13 +238,13 @@ def handle_position_cdp(serial, position, user_data):
     if serial not in DEVICE_FILTER_CDP:
         return
 
-    name = DEVICE_FILTER_CDP[serial]
+    name, origin = DEVICE_FILTER_CDP[serial]
 
     result = []
 
     if position is not None:
         position = [a * b for a, b in zip(position, DIRECTION)]
-        position = median_filter_update(serial, position)
+        # position = median_filter_update(serial, position)
 
         if position is not None:  # and not reject_position(serial, position):
             if name in ("dancer/left-wrist", "dancer/right-wrist", "dancer/wand"):
@@ -480,14 +484,17 @@ def log_init():
     log_start = time.time()
 
 
-def log_position(serial, position, hit_event):
+def log_position(serial, position, hit_event, event_note):
     fil = log_files.get(serial, None)
 
     if fil is None:
         fil = log_files[serial] = file(os.path.join(params.log, "{:08X}.csv".format(serial)), "w")
+        if serial in DEVICE_FILTER_CDP:
+            name, origin = DEVICE_FILTER_CDP[serial]
+            fil.write("{}@({},{},{}): time, hit, note, x, y, z\n".format(name, *origin))
 
     elapsed = time.time() - log_start
-    line = "{},{},{},{},{}\n".format(elapsed, 1 if hit_event else 0, *position)
+    line = "{},{},{},{},{},{}\n".format(elapsed, 1 if hit_event else 0, event_note, *position)
 
     fil.write(line)
     fil.flush()
