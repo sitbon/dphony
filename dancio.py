@@ -28,115 +28,66 @@ MIDI_EVENT_PROGRAM_CHANGE = 0xC0
 MIDI_EVENT_CHANNEL_PRESSURE = 0xD0
 MIDI_EVENT_PITCH_BEND_CHANGE = 0xE0
 
-NOTE_BASE = 41
+NOTE_BASE = 0
 
-ORIGIN_DEFAULT = (-6.86 + 0.3*3, -12, 0)
+ORIGIN_DEFAULT = (-6.86, -12, 0)
 DIRECTION = (-1, -1, 1)
 
 NOTE_AXIS_MAP_CDP = {
     0.3 * -1:   None,
 
-    0.3 * 0:    0,
-    0.3 * 1:    2,
-    0.3 * 2:    4,
-    0.3 * 3:    6,
-    0.3 * 4:    7,
-    0.3 * 5:    9,
-    0.3 * 6:    11,
-    0.3 * 7:    12,
-    0.3 * 8:    14,
-    0.3 * 9:    16,
-    0.3 * 10:   18,
-    0.3 * 11:   19,
-    0.3 * 12:   21,
-    0.3 * 13:   23,
-    0.3 * 14:   24,
-    0.3 * 15:   26,
-    0.3 * 16:   28,
-    0.3 * 17:   30,
-    0.3 * 18:   31,
-    0.3 * 19:   33,
-    0.3 * 20:   35,
-    0.3 * 21:   36,
-    0.3 * 22:   38,
-    0.3 * 23:   40,
-    0.3 * 24:   42,
-    0.3 * 25:   43,
-    0.3 * 26:   45,
-    0.3 * 27:   47,
-    0.3 * 28:   48,
-    0.3 * 29:   50,
-    0.3 * 30:   52,
-    0.3 * 31:   54,
-    0.3 * 32:   55,
-    0.3 * 33:   57,
-    0.3 * 34:   59,
+    0.3 * 0:    36,
+    0.3 * 1:    38,
+    0.3 * 2:    40,
+    0.3 * 3:    41,
+    0.3 * 4:    43,
+    0.3 * 5:    45,
+    0.3 * 6:    47,
+    0.3 * 7:    48,
+    0.3 * 8:    50,
+    0.3 * 9:    52,
+    0.3 * 10:   53,
+    0.3 * 11:   55,
+    0.3 * 12:   57,
+    0.3 * 13:   59,
+    0.3 * 14:   60,
+    0.3 * 15:   62,
+    0.3 * 16:   64,
+    0.3 * 17:   65,
+    0.3 * 18:   67,
+    0.3 * 19:   69,
+    0.3 * 20:   71,
+    0.3 * 21:   72,
+    0.3 * 22:   74,
+    0.3 * 23:   76,
+    0.3 * 24:   77,
+    0.3 * 25:   79,
+    0.3 * 26:   81,
+    0.3 * 27:   83,
+    0.3 * 28:   84,
+    0.3 * 29:   86,
+    0.3 * 30:   88,
+    0.3 * 31:   89,
+    0.3 * 32:   91,
+    0.3 * 33:   93,
+    0.3 * 34:   95,
+    0.3 * 35:   96,
 
-    0.3 * 35:   None,
+    0.3 * 36:   None,
 }
-
-NOTE_AXIS_MAP_CDP_BLACK = {
-    0.3 * -1.:  None,
-
-    0.3 * 0.0:  1,       # first black key, 0-1.5x
-    0.3 * 1.5:  3,       # second, 1.5x-2.5x
-    0.3 * 2.5:  5,       # third, 2.5x-3.5x
-    0.3 * 3.5:  None,    # nothing, 3.5x-4.5x
-    0.3 * 4.5:  8,       # 4: 4.5x-5.5x
-    0.3 * 5.5:  10,      # 5: 5.5x-6.5x
-    0.3 * 6.5:  None,    # nothing: 6.5x-7.5x
-
-    0.3 * 7.5:  13,
-    0.3 * 8.5:  15,
-    0.3 * 9.5:  17,
-    0.3 * 10.5: None,
-    0.3 * 11.5: 20,
-    0.3 * 12.5: 22,
-    0.3 * 13.5: None,
-
-    0.3 * 14.5: 25,
-    0.3 * 15.5: 27,
-    0.3 * 16.5: 29,
-    0.3 * 17.5: None,
-    0.3 * 18.5: 32,
-    0.3 * 19.5: 34,
-    0.3 * 20.5: None,
-
-    0.3 * 21.5: 37,
-    0.3 * 22.5: 39,
-    0.3 * 23.5: 41,
-    0.3 * 24.5: None,
-
-    0.3 * 25.5: 44,
-    0.3 * 25.5: 46,
-    0.3 * 26.5: None,
-
-    0.3 * 27.5: 49,
-    0.3 * 28.5: 51,
-    0.3 * 29.5: 53,
-    0.3 * 30.5: None,
-
-    0.3 * 31.5: 56,
-    0.3 * 31.5: 58,
-    0.3 * 32.5: None,
-
-    0.3 * 33.5: None,
-}
-
-NOTE_THRESHOLD_CDP_BLACK = 0.75
 
 DEVICE_FILTER_CDP = {
 
-    0x06021373: ("pianist/sergio/right", ORIGIN_DEFAULT),
-    0x06021394: ("pianist/sergio/left", ORIGIN_DEFAULT),
-    0x06021368: ("pianist/sergio/spare", ORIGIN_DEFAULT),
+    0x06021373: ("pianist/sergio/right", (-6.85, -12.1, 0)),
+    0x06021394: ("pianist/sergio/left", (-6.86, -12.4, 0)),
+    0x06021368: ("pianist/sergio/spare", (-6.88, -12.3, 0)),
 
-    0x06021348: ("pianist/kevin/right", ORIGIN_DEFAULT),
-    0x0602139F: ("pianist/kevin/left", ORIGIN_DEFAULT),
-    0x06021351: ("pianist/kevin/right", ORIGIN_DEFAULT),
+    0x06021348: ("pianist/kevin/right", (-6.84, -12.4, 0)),
+    0x0602139F: ("pianist/kevin/left", (-6.8, -12.25, 0)),
+    0x06021351: ("pianist/kevin/spare", (-6.8, -12.2, 0)),
 
-    0x06021345: ("pianist/angie/right", ORIGIN_DEFAULT),
-    0x06021379: ("pianist/angie/left", ORIGIN_DEFAULT),
+    0x06021345: ("pianist/angie/right", (-6.84, -12.3, 0)),
+    0x06021379: ("pianist/angie/left", (-6.86, -12.4, 0)),
     0x06021356: ("pianist/angie/spare", ORIGIN_DEFAULT),
 
     0x0602135C: ("dancer/left-wrist", ORIGIN_DEFAULT),
@@ -211,14 +162,7 @@ def handle_position_cdp_music(serial, position, user_data):
 
         if (mask & 2) and (serial in cdp_pos) and ("dancer" not in name):
             pos = cdp_pos[serial]
-
-            if pos[1] >= NOTE_THRESHOLD_CDP_BLACK:
-                note = map_note_cdp_black(pos[0])
-
-                if note is None:
-                    note = map_note_cdp(pos[0])
-            else:
-                note = map_note_cdp(pos[0])
+            note = map_note_cdp(pos[0])
 
             if (note is not None) and (not note_last_block(serial)):
                 event_note = note
@@ -386,10 +330,6 @@ def note_last_block(serial):
     return block
 
 
-def map_note_cdp_black(lateral_position):
-    return map_note(NOTE_AXIS_MAP_CDP_BLACK, lateral_position)
-
-
 def map_note_cdp(lateral_position):
     return map_note(NOTE_AXIS_MAP_CDP, lateral_position)
 
@@ -465,7 +405,7 @@ def display_position(serial, position, data):
         pos = "-".rjust(12) * 3 + "\t"
     else:
         if params.music:
-            position = [(a - b) * c for a, b, c in zip(position, ORIGIN, DIRECTION)]
+            position = [(a - b) * c for a, b, c in zip(position, ORIGIN_DEFAULT, DIRECTION)]
 
         pos = " ".join(str(round(p, 3)).rjust(12) for p in position)
 
