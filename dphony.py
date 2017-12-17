@@ -120,8 +120,9 @@ def handle_position_music(serial, position):
         note_info[serial] = None
 
     if note_info[serial] is None:
+        velocity = trigger.velocity_update(serial, position)
 
-        if trigger.is_trigger(serial, position):
+        if trigger.is_trigger(velocity):
             note_info[serial] = map_note_dcc(position[1])
 
             if (note_info[serial] is not None) and (not note_last_block(serial)):
@@ -143,7 +144,8 @@ def handle_position(serial, position):
     position = transform_position(position)
 
     if params.log:
-        log_position(serial, position)
+        velocity = trigger.velocity_update(serial, position)
+        log_position(serial, position, velocity)
 
     return osc_position(serial, position)
 
@@ -161,10 +163,6 @@ def note_last_block(serial):
 
 def map_note_dcc(lateral_position):
     return map_note(NOTE_AXIS_MAP_DCC, lateral_position)
-
-
-def map_note_lcm(lateral_position):
-    return map_note(NOTE_AXIS_MAP_LCM, lateral_position)
 
 
 def map_note(note_map, lateral_position):
@@ -206,14 +204,14 @@ def log_init():
     log_start = time.time()
 
 
-def log_position(serial, position):
+def log_position(serial, position, velocity):
     fil = log_files.get(serial, None)
 
     if fil is None:
         fil = log_files[serial] = file(os.path.join(params.log, "{:08X}.csv".format(serial)), "w")
 
     elapsed = time.time() - log_start
-    line = "{},{},{},{}\n".format(elapsed, *position)
+    line = "{},{},{},{},{}\n".format(elapsed, velocity, *position)
 
     fil.write(line)
     fil.flush()
