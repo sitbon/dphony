@@ -17,6 +17,7 @@ import parse
 import OSC
 import math
 import cleanup
+import trigger
 
 MIDI_EVENT_NOTE_OFF = 0x80
 MIDI_EVENT_NOTE_ON = 0x90
@@ -119,29 +120,21 @@ def handle_position_music(serial, position):
         note_info[serial] = None
 
     if note_info[serial] is None:
-        ptrig = pre_trig.get(serial, None)
 
-        if not ptrig:
-            if position[2] > TRIG_AXIS_MAP_DCC[1]:
-                pre_trig[serial] = True
-            else:
-                pre_trig[serial] = False
-        else:
-            if position[2] <= TRIG_AXIS_MAP_DCC[1]:
-                note_info[serial] = map_note_dcc(position[1])
+        if trigger.is_trigger(serial, position):
+            note_info[serial] = map_note_dcc(position[1])
 
-                if (note_info[serial] is not None) and (not note_last_block(serial)):
-                    print("[{:08X}] note: {} ON".format(serial, note_info[serial]))
-                    return osc_midi(serial, MIDI_EVENT_NOTE_ON, note_info[serial], 127)
+            if (note_info[serial] is not None) and (not note_last_block(serial)):
+                print("[{:08X}] note: {} ON".format(serial, note_info[serial]))
+                return osc_midi(serial, MIDI_EVENT_NOTE_ON, note_info[serial], 127)
 
-    elif (note_info[serial] is not None) and (position[2] > TRIG_AXIS_MAP_DCC[1]):
+    elif (note_info[serial] is not None) and not trigger.is_trigger(serial, position):
         note = note_info[serial]
         note_info[serial] = None
         pre_trig[serial] = False
 
-        if not note_last_block(serial):
-            print("[{:08X}] note: {} OFF".format(serial, note))
-            return  # osc_midi(serial, MIDI_EVENT_NOTE_OFF, note, 0)
+        print("[{:08X}] note: {} OFF".format(serial, note))
+        return  # osc_midi(serial, MIDI_EVENT_NOTE_OFF, note, 0)
 
     return None
 
