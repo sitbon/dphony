@@ -129,7 +129,7 @@ def handle_position_cdp_music(serial, position, user_data):
 
     if position is not None:
         position = [(a * b) - c for a, b, c in zip(position, DIRECTION, origin)]
-        # position = median_filter_update(serial, position)
+        position = human_filter_update(serial, position)
 
         if position is not None and "tramp" not in name:
             cdp_pos[serial] = position
@@ -188,7 +188,7 @@ def handle_position_cdp(serial, position, user_data):
 
     if position is not None:
         position = [a * b for a, b in zip(position, DIRECTION)]
-        # position = median_filter_update(serial, position)
+        position = human_filter_update(serial, position)
 
         if position is not None:  # and not reject_position(serial, position):
             if name in ("dancer/left-wrist", "dancer/right-wrist", "dancer/wand"):
@@ -232,6 +232,48 @@ def handle_position_cdp(serial, position, user_data):
 
     if len(result):
         return result
+
+
+hf_thr = (0.25 / 100, 1.0 / 100)
+hf_cleanx = {}
+
+
+def human_filter_update(serial, position):
+    x = position[0]
+
+    if serial not in hf_cleanx:
+        hf_cleanx[serial] = (1, x, 0)
+
+    val, xv, tv = hf_cleanx[serial]
+
+    tv += 1
+
+    if tv > 300:
+        tv = 300
+
+    delta = x - xv
+    adel = abs(delta)
+
+    thn = adel / tv
+
+    if thn < hf_thr[0]:
+        alp = 1
+        val = 1
+        tv = 0
+    else:
+        if thn >= hf_thr[1]:
+            alp = 0
+            val = 0
+        else:
+            alp = (hf_thr[1] - thn) / (hf_thr[1] - hf_thr[0])
+
+    xv = xv + alp * delta
+
+    hf_cleanx[serial] = (val, xv, tv)
+
+    position[0] = xv
+
+    return position
 
 
 def median_filter_update(serial, position):
