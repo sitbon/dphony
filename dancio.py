@@ -137,7 +137,7 @@ def handle_position_cdp_music(serial, position, user_data):
 
     if user_data is None or not len(user_data) or len(user_data) < 15:
         if params.log and (position is not None):
-            log_position(serial, position, False, 0)
+            log_position(serial, position_raw, position, False, 0)
 
         if len(result):
             return result
@@ -272,9 +272,7 @@ def human_filter_update(serial, position):
 
     hf_cleanx[serial] = (val, xv, tv)
 
-    position[0] = xv
-
-    return position
+    return xv, position[1], position[2]
 
 
 def reject_position(serial, pos):
@@ -463,7 +461,7 @@ def log_position(serial, position_raw, position, hit_event, event_note):
 
     elapsed = time.time() - log_start
     line = "{},{},{},{},{},{},{},{},{}\n".format(
-        elapsed, 1 if hit_event else 0, event_note, *(position_raw + position)
+        elapsed, 1 if hit_event else 0, event_note, *(tuple(position_raw) + tuple(position))
     )
 
     fil.write(line)
