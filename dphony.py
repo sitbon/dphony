@@ -117,7 +117,7 @@ def handle_position_music(serial, position):
         note_info[serial] = None
 
     if note_info[serial] is None:
-        velocity = trigger.velocity_update(serial, position)
+        velocityi, velocity = trigger.velocity_update(serial, position)
 
         if trigger.is_trigger(velocity):
             note_info[serial] = map_note_dcc(position[1])
@@ -126,13 +126,16 @@ def handle_position_music(serial, position):
                 print("[{:08X}] note: {} ON".format(serial, note_info[serial]))
                 return osc_midi(serial, MIDI_EVENT_NOTE_ON, note_info[serial], 127)
 
-    elif (note_info[serial] is not None) and not trigger.is_trigger(serial, position):
-        note = note_info[serial]
-        note_info[serial] = None
-        pre_trig[serial] = False
+    elif note_info[serial] is not None:
+        velocityi, velocity = trigger.velocity_update(serial, position)
 
-        print("[{:08X}] note: {} OFF".format(serial, note))
-        return  # osc_midi(serial, MIDI_EVENT_NOTE_OFF, note, 0)
+        if not trigger.is_trigger(velocity):
+            note = note_info[serial]
+            note_info[serial] = None
+            pre_trig[serial] = False
+
+            print("[{:08X}] note: {} OFF".format(serial, note))
+            return  # osc_midi(serial, MIDI_EVENT_NOTE_OFF, note, 0)
 
     return None
 
@@ -141,13 +144,15 @@ def handle_position(serial, position):
     position = transform_position(position)
 
     if params.log:
-        velocity = trigger.velocity_update(serial, position)
-        log_position(serial, position, velocity)
+        velocityi, velocity = trigger.velocity_update(serial, position)
+        log_position(serial, position, velocityi, velocity)
 
     return osc_position(serial, position)
 
 
 def note_last_block(serial):
+    return False
+
     now = time.time()
     block = False
 
@@ -201,15 +206,15 @@ def log_init():
     log_start = time.time()
 
 
-def log_position(serial, position, velocity):
+def log_position(serial, position, velocityi, velocity):
     fil = log_files.get(serial, None)
 
     if fil is None:
         fil = log_files[serial] = file(os.path.join(params.log, "{:08X}.csv".format(serial)), "w")
-        fil.write("time,velocity,x,y,z\n")
+        fil.write("time,ivelocity,velocity,x,y,z\n")
 
     elapsed = time.time() - log_start
-    line = "{},{},{},{},{}\n".format(elapsed, velocity, *position)
+    line = "{},{},{},{},{},{}\n".format(elapsed, velocityi, velocity, *position)
 
     fil.write(line)
     fil.flush()
