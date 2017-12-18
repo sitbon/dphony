@@ -88,7 +88,6 @@ DEVICE_FILTER_CDP = {
 
     0x06021345: ("pianist/angie/right", (-6.84, -12.3, 0)),
     0x06021379: ("pianist/angie/left", (-6.86, -12.4, 0)),
-    0x06021356: ("pianist/angie/spare", ORIGIN_DEFAULT),
 
     0x0602135C: ("dancer/left-wrist", ORIGIN_DEFAULT),
     0x06021344: ("dancer/right-wrist", ORIGIN_DEFAULT),
@@ -158,8 +157,7 @@ def handle_position_cdp_music(serial, position, user_data):
         else:
             cdp_dedup[serial] = sequence
 
-        if mask & 2:
-            has_event = 1
+        has_event = mask
 
         if (mask & 2) and (serial in cdp_pos) and ("dancer" not in name):
             pos = cdp_pos[serial]
