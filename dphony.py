@@ -113,9 +113,6 @@ def handle_position_music(serial, position):
 
     position = transform_position(position)
 
-    if params.log:
-        log_position(serial, position)
-
     if serial not in note_info:
         note_info[serial] = None
 
@@ -209,6 +206,7 @@ def log_position(serial, position, velocity):
 
     if fil is None:
         fil = log_files[serial] = file(os.path.join(params.log, "{:08X}.csv".format(serial)), "w")
+        fil.write("time,velocity,x,y,z\n")
 
     elapsed = time.time() - log_start
     line = "{},{},{},{},{}\n".format(elapsed, velocity, *position)
@@ -271,6 +269,10 @@ if __name__ == '__main__':
 
     try:
         params = parser.parse_args()
+
+        if params.log and params.music:
+            raise ValueError, "Cannot log in music mode"
+
         main(params)
 
     except KeyboardInterrupt:

@@ -515,6 +515,10 @@ if __name__ == '__main__':
 
     try:
         params = parser.parse_args()
+
+        if params.log and not params.music:
+            raise ValueError, "Cannot log in video mode"
+
         main(params)
 
     except KeyboardInterrupt:
