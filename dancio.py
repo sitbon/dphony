@@ -82,7 +82,7 @@ DEVICE_FILTER_CDP = {
     0x06021394: ("pianist/sergio/left", (-6.86, -12.4, 0)),
     0x06021368: ("pianist/sergio/spare", (-6.88, -12.3, 0)),
 
-    0x06021348: ("pianist/kevin/right", (-6.84, -12.4, 0)),
+    0x06021356: ("pianist/kevin/right", (-6.84, -12.4, 0)),
     0x0602139F: ("pianist/kevin/left", (-6.8, -12.25, 0)),
     0x06021351: ("pianist/kevin/spare", (-6.8, -12.2, 0)),
 
