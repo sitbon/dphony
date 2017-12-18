@@ -189,7 +189,7 @@ def handle_position_cdp(serial, position, user_data):
 
     if position is not None:
         position = [a * b for a, b in zip(position, DIRECTION)]
-        position = human_filter_update(serial, position)
+        # position = human_filter_update(serial, position)
 
         if position is not None:  # and not reject_position(serial, position):
             if name in ("dancer/left-wrist", "dancer/right-wrist", "dancer/wand"):
