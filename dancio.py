@@ -112,7 +112,7 @@ note_info = {}
 note_last = {}
 
 cdp_pos = {}
-cdp_pos_filt = {}
+cdp_pos_raw = {}
 cdp_dedup = {}
 cdp_reject = {}
 
@@ -128,10 +128,11 @@ def handle_position_cdp_music(serial, position, user_data):
     result = []
 
     if position is not None:
-        position = [(a * b) - c for a, b, c in zip(position, DIRECTION, origin)]
-        position = human_filter_update(serial, position)
+        position_raw = [(a * b) - c for a, b, c in zip(position, DIRECTION, origin)]
+        position = human_filter_update(serial, position_raw)
 
         if position is not None and "tramp" not in name:
+            cdp_pos_raw[serial] = position_raw
             cdp_pos[serial] = position
 
     if user_data is None or not len(user_data) or len(user_data) < 15:
@@ -172,7 +173,7 @@ def handle_position_cdp_music(serial, position, user_data):
                     print("{:08X}: note: {}".format(serial, note))
 
     if params.log and (serial in cdp_pos):
-        log_position(serial, cdp_pos[serial], has_event, event_note)
+        log_position(serial, cdp_pos_raw[serial], cdp_pos[serial], has_event, event_note)
 
     if len(result):
         return result
@@ -273,21 +274,6 @@ def human_filter_update(serial, position):
 
     position[0] = xv
 
-    return position
-
-
-def median_filter_update(serial, position):
-    poss = cdp_pos_filt.setdefault(serial, [])
-    poss.append(position)
-
-    if len(poss) < 3:
-        return None
-
-    position = median(p[0] for p in poss),\
-               median(p[1] for p in poss),\
-               median(p[2] for p in poss)
-
-    cdp_pos_filt[serial] = cdp_pos_filt[serial][-3:]
     return position
 
 
@@ -466,17 +452,19 @@ def log_init():
     log_start = time.time()
 
 
-def log_position(serial, position, hit_event, event_note):
+def log_position(serial, position_raw, position, hit_event, event_note):
     fil = log_files.get(serial, None)
 
     if fil is None:
         fil = log_files[serial] = file(os.path.join(params.log, "{:08X}.csv".format(serial)), "w")
         if serial in DEVICE_FILTER_CDP:
             name, origin = DEVICE_FILTER_CDP[serial]
-            fil.write("{}@({},{},{}): time, hit, note, x, y, z\n".format(name, *origin))
+            fil.write("{}@({},{},{}): time, hit, note, rx, ry, rz, x, y, z\n".format(name, *origin))
 
     elapsed = time.time() - log_start
-    line = "{},{},{},{},{},{}\n".format(elapsed, 1 if hit_event else 0, event_note, *position)
+    line = "{},{},{},{},{},{},{},{},{}\n".format(
+        elapsed, 1 if hit_event else 0, event_note, *(position_raw + position)
+    )
 
     fil.write(line)
     fil.flush()
