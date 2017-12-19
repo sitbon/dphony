@@ -20,7 +20,7 @@ def calculate_pointing(name, position):
     sensor_pos[name] = position
 
     if len(sensor_pos) != 3:
-        return
+        return None, None
 
     left_wrist_pos = sensor_pos["dancer/left-wrist"]
     right_wrist_pos = sensor_pos["dancer/right-wrist"]
@@ -29,23 +29,26 @@ def calculate_pointing(name, position):
     # calculate distance
     wrist_dist = distance(left_wrist_pos, right_wrist_pos)
 
-    wrist_dist_lp1 = wrist_dist_lp1 * 0.9 + wrist_dist * 0.1
-    wrist_dist_lp2 = wrist_dist_lp2 * 0.9 + wrist_dist_lp1 * 0.1
+    wrist_dist_lp1 = wrist_dist_lp1 * 0.5 + wrist_dist * 0.5
+    wrist_dist_lp2 = wrist_dist_lp2 * 0.5 + wrist_dist_lp1 * 0.5
     wrist_dist = wrist_dist_lp2
+
+    now = time.time()
 
     if not on:
         # print(wrist_dist)
         if wrist_dist <= 0.3:
             if on_pre is None:
-                on_pre = time.time()
+                on_pre = now
             else:
-                elapsed = time.time() - on_pre
+                elapsed = now - on_pre
                 if elapsed >= 0.3:
                     on = True
+                    on_pre = now
         elif on_pre is not None:
             on_pre = None
     else:
-        if wrist_dist > 0.5 and (time.time() - on_pre) >= 3.5:
+        if wrist_dist > 0.5 and (now - on_pre) >= 1.5:
             on = False
             on_pre = None
 
@@ -53,7 +56,9 @@ def calculate_pointing(name, position):
         wrist_avg = ((left_wrist_pos[0] + right_wrist_pos[0]) / 2, ((left_wrist_pos[1] + right_wrist_pos[1]) / 2),
                      ((left_wrist_pos[2] + right_wrist_pos[2]) / 2))
         wand_vect = (wand_pos[0] - wrist_avg[0], wand_pos[1] - wrist_avg[1], wand_pos[2] - wrist_avg[2])
-        return wand_vect
+        return wrist_dist, wand_vect
+
+    return None, None
 
 
 def distance(p1, p2):

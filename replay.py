@@ -18,8 +18,8 @@ def position_smooth(serial, position):
         lowpass_o1[serial] = [0, 0, 0]
         lowpass_o2[serial] = [0, 0, 0]
 
-    lowpass_o1[serial] = [lp1 * 0.1 + p * 0.9 for lp1, p in zip(lowpass_o1[serial], position)]
-    lowpass_o2[serial] = [lp2 * 0.1 + lp1 * 0.9 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
+    lowpass_o1[serial] = [lp1 * 0.005 + p * 0.995 for lp1, p in zip(lowpass_o1[serial], position)]
+    lowpass_o2[serial] = [lp2 * 0.005 + lp1 * 0.995 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
 
     return lowpass_o2[serial]
 
@@ -29,9 +29,9 @@ def handle_data(ts, serial, name, origin, data):
 
     if name in ("dancer/left-wrist", "dancer/right-wrist", "dancer/wand"):
         position = position_smooth(serial, position)
-        vec = wand.calculate_pointing(name, position)
+        dist, vec = wand.calculate_pointing(name, position)
         if vec is not None:
-            print(ts, vec)
+            print(ts, dist, vec)
 
 
 def main(args):
@@ -53,8 +53,12 @@ def main(args):
         for line in lines:
             ts, data = line.split(',', 1)
             ts = float(ts)
-            data = [float(p) for p in data.split(',')]
-            sch.enter(ts, 1, handle_data, (ts, serial, name, origin, data))
+
+            if ts >= args.start:
+                ts_actual = ts
+                ts -= args.start
+                data = [float(p) for p in data.split(',')]
+                sch.enter(ts, 1, handle_data, (ts_actual, serial, name, origin, data))
 
     sch.run()
 
@@ -62,6 +66,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('folder', metavar='FOLDER', help='log folder to read from')
+    parser.add_argument('-s', '--start', metavar='START', default=0, type=float, help='time index to start from')
 
     try:
         params = parser.parse_args()

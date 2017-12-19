@@ -80,43 +80,29 @@ NOTE_AXIS_MAP_CDP_KEYS = list(reversed(sorted(NOTE_AXIS_MAP_CDP.keys())))
 
 DEVICE_FILTER_CDP = {
 
-    # 0x06021373: ("pianist/sergio/right", (-6.85, -12.1, 0)),
-    # 0x06021394: ("pianist/sergio/left", (-6.86, -12.4, 0)),
-    # 0x06021368: ("pianist/sergio/spare", (-6.88, -12.3, 0)),
-    #
-    # 0x06021356: ("pianist/kevin/right", (-6.84, -12.4, 0)),
-    # 0x0602139F: ("pianist/kevin/left", (-6.8, -12.25, 0)),
-    # 0x06021351: ("pianist/kevin/spare", (-6.8, -12.2, 0)),
-    #
-    # 0x06021345: ("pianist/angie/right", (-6.84, -12.3, 0)),
-    # 0x06021379: ("pianist/angie/left", (-6.86, -12.4, 0)),
-    #
+    0x06021390: ("pianist/sergio/left", ORIGIN_DEFAULT),
+    0x06021355: ("pianist/sergio/right", ORIGIN_DEFAULT),
+
+    0x0602135D: ("pianist/kevin/left", ORIGIN_DEFAULT),
+    0x06021346: ("pianist/kevin/right", ORIGIN_DEFAULT),
+
+    0x0602138E: ("pianist/angie/left", ORIGIN_DEFAULT),
+    0x06021343: ("pianist/angie/right", ORIGIN_DEFAULT),
+
+    0x06021368: ("pianist/isaiah/left", ORIGIN_DEFAULT),
+    0x060213A2: ("pianist/isaiah/right", ORIGIN_DEFAULT),
+
     0x0602135C: ("dancer/left-wrist", ORIGIN_DEFAULT),
     0x06021344: ("dancer/right-wrist", ORIGIN_DEFAULT),
     0x06021349: ("dancer/right-ankle", ORIGIN_DEFAULT),
     0x06021395: ("dancer/left-ankle", ORIGIN_DEFAULT),
     0x06021367: ("dancer/wand", ORIGIN_DEFAULT),
-    0x0602134F: ("dancer/wand", ORIGIN_DEFAULT),
-    0x06021387: ("dancer/spare", ORIGIN_DEFAULT),
 
-    0x06021340: ("tramp/right", ORIGIN_DEFAULT),
     0x0602137E: ("tramp/left", ORIGIN_DEFAULT),
-    0x060213A2: ("tramp/spare", ORIGIN_DEFAULT),
+    0x06021340: ("tramp/right", ORIGIN_DEFAULT),
 
-    0x06021359: ("none/spare", ORIGIN_DEFAULT),
-    0x0602136A: ("none/spare", ORIGIN_DEFAULT),
-
-    # 0x06021367: ("pianist/kevin/left", ORIGIN_DEFAULT),
-    # 0x06021349: ("pianist/kevin/right", ORIGIN_DEFAULT),
-    #
-    # 0x06021344: ("pianist/sergio/left", ORIGIN_DEFAULT),
-    # 0x06021395: ("pianist/sergio/right", ORIGIN_DEFAULT),
-    #
-    # 0x06021368: ("pianist/angie/left", ORIGIN_DEFAULT),
-    # 0x0602134F: ("pianist/angie/right", ORIGIN_DEFAULT),
-    #
-    # 0x060213A2: ("pianist/isaiah/left", ORIGIN_DEFAULT),
-    # 0x06021387: ("pianist/isaiah/right", ORIGIN_DEFAULT),
+    0x0602134F: ("none/spare/1", ORIGIN_DEFAULT),
+    0x06021387: ("none/spare/2", ORIGIN_DEFAULT),
 
 }
 
@@ -149,7 +135,7 @@ def handle_position_cdp_music(serial, position, user_data):
             cdp_pos_raw[serial] = position_raw
             cdp_pos[serial] = position
 
-    if user_data is None or not len(user_data) or len(user_data) < 15:
+    if (user_data is None) or (len(user_data) < 15):
         if params.log and (position is not None):
             log_position(serial, position_raw, position, False, 0)
 
@@ -207,7 +193,7 @@ def handle_position_cdp(serial, position, user_data):
 
         if position is not None:  # and not reject_position(serial, position):
             if name in ("dancer/left-wrist", "dancer/right-wrist", "dancer/wand"):
-                vec = wand.calculate_pointing(name, position)
+                wdist, vec = wand.calculate_pointing(name, position)
 
                 if vec is not None:
                     result.append(osc_gesture("pointing", "dancer", *vec))
@@ -258,8 +244,8 @@ def position_smooth(serial, position):
         lowpass_o1[serial] = [0, 0, 0]
         lowpass_o2[serial] = [0, 0, 0]
 
-    lowpass_o1[serial] = [lp1 * 0.1 + p * 0.9 for lp1, p in zip(lowpass_o1[serial], position)]
-    lowpass_o2[serial] = [lp2 * 0.1 + lp1 * 0.9 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
+    lowpass_o1[serial] = [lp1 * 0.005 + p * 0.995 for lp1, p in zip(lowpass_o1[serial], position)]
+    lowpass_o2[serial] = [lp2 * 0.005 + lp1 * 0.995 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
 
     return lowpass_o2[serial]
 
