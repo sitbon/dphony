@@ -85,6 +85,8 @@ NOTE_AXIS_MAP_DCC = {
     10: None
 }
 
+NOTE_AXIS_MAP_DCC_KEYS = list(reversed(sorted(NOTE_AXIS_MAP_DCC.keys())))
+
 TRIG_AXIS_MAP_DCC = (0, 2.4)
 
 pre_trig = {}
@@ -120,22 +122,15 @@ def handle_position_music(serial, position):
         velocityi, velocity = trigger.velocity_update(serial, position)
 
         if trigger.is_trigger(velocity):
+            print("[{:08X}] trigger v={} y={}".format(serial, velocity, position[1]))
             note_info[serial] = map_note_dcc(position[1])
 
             if (note_info[serial] is not None) and (not note_last_block(serial)):
-                print("[{:08X}] note: {} ON".format(serial, note_info[serial]))
+                print("[{:08X}] note: {}".format(serial, note_info[serial]))
                 return osc_midi(serial, MIDI_EVENT_NOTE_ON, note_info[serial], 127)
 
     elif note_info[serial] is not None:
-        velocityi, velocity = trigger.velocity_update(serial, position)
-
-        if not trigger.is_trigger(velocity):
-            note = note_info[serial]
-            note_info[serial] = None
-            pre_trig[serial] = False
-
-            print("[{:08X}] note: {} OFF".format(serial, note))
-            return  # osc_midi(serial, MIDI_EVENT_NOTE_OFF, note, 0)
+        note_info[serial] = None
 
     return None
 
@@ -151,8 +146,6 @@ def handle_position(serial, position):
 
 
 def note_last_block(serial):
-    return False
-
     now = time.time()
     block = False
 
@@ -164,14 +157,16 @@ def note_last_block(serial):
 
 
 def map_note_dcc(lateral_position):
-    return map_note(NOTE_AXIS_MAP_DCC, lateral_position)
+    return map_note(NOTE_AXIS_MAP_DCC, NOTE_AXIS_MAP_DCC_KEYS, lateral_position)
 
 
-def map_note(note_map, lateral_position):
-    thresholds = list(reversed(sorted(note_map.keys())))
+def map_note(note_map, keys, lateral_position):
+    thresholds = keys
 
     for threshold in thresholds:
         if lateral_position >= threshold:
+            if note_map[threshold] is None:
+                return None
             return NOTE_BASE + note_map[threshold]
 
     return NOTE_BASE + note_map[thresholds[-1]]

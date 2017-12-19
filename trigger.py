@@ -8,7 +8,7 @@ lowpass_o2 = {}
 
 
 def is_trigger(velocity):
-    return velocity < -0.3
+    return velocity < -0.47
 
 
 def velocity_update(serial, position):
@@ -31,7 +31,7 @@ def velocity_update(serial, position):
     prev_pos[serial] = position
     prev_ts[serial] = now
 
-    lowpass_o1[serial] = lowpass_o1[serial] * 0.6 * velocity * 0.4
-    lowpass_o2[serial] = lowpass_o2[serial] * 0.6 + lowpass_o1[serial] * 0.4
+    lowpass_o1[serial] = lowpass_o1[serial] * 0.75 + velocity * 0.25
+    lowpass_o2[serial] = lowpass_o2[serial] * 0.75 + lowpass_o1[serial] * 0.25
 
     return velocity, lowpass_o2[serial]
