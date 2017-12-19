@@ -76,19 +76,21 @@ NOTE_AXIS_MAP_CDP = {
     0.3 * 36:   None,
 }
 
+NOTE_AXIS_MAP_CDP_KEYS = list(reversed(sorted(NOTE_AXIS_MAP_CDP.keys())))
+
 DEVICE_FILTER_CDP = {
 
-    0x06021373: ("pianist/sergio/right", (-6.85, -12.1, 0)),
-    0x06021394: ("pianist/sergio/left", (-6.86, -12.4, 0)),
-    0x06021368: ("pianist/sergio/spare", (-6.88, -12.3, 0)),
-
-    0x06021356: ("pianist/kevin/right", (-6.84, -12.4, 0)),
-    0x0602139F: ("pianist/kevin/left", (-6.8, -12.25, 0)),
-    0x06021351: ("pianist/kevin/spare", (-6.8, -12.2, 0)),
-
-    0x06021345: ("pianist/angie/right", (-6.84, -12.3, 0)),
-    0x06021379: ("pianist/angie/left", (-6.86, -12.4, 0)),
-
+    # 0x06021373: ("pianist/sergio/right", (-6.85, -12.1, 0)),
+    # 0x06021394: ("pianist/sergio/left", (-6.86, -12.4, 0)),
+    # 0x06021368: ("pianist/sergio/spare", (-6.88, -12.3, 0)),
+    #
+    # 0x06021356: ("pianist/kevin/right", (-6.84, -12.4, 0)),
+    # 0x0602139F: ("pianist/kevin/left", (-6.8, -12.25, 0)),
+    # 0x06021351: ("pianist/kevin/spare", (-6.8, -12.2, 0)),
+    #
+    # 0x06021345: ("pianist/angie/right", (-6.84, -12.3, 0)),
+    # 0x06021379: ("pianist/angie/left", (-6.86, -12.4, 0)),
+    #
     0x0602135C: ("dancer/left-wrist", ORIGIN_DEFAULT),
     0x06021344: ("dancer/right-wrist", ORIGIN_DEFAULT),
     0x06021349: ("dancer/right-ankle", ORIGIN_DEFAULT),
@@ -103,6 +105,18 @@ DEVICE_FILTER_CDP = {
 
     0x06021359: ("none/spare", ORIGIN_DEFAULT),
     0x0602136A: ("none/spare", ORIGIN_DEFAULT),
+
+    # 0x06021367: ("pianist/kevin/left", ORIGIN_DEFAULT),
+    # 0x06021349: ("pianist/kevin/right", ORIGIN_DEFAULT),
+    #
+    # 0x06021344: ("pianist/sergio/left", ORIGIN_DEFAULT),
+    # 0x06021395: ("pianist/sergio/right", ORIGIN_DEFAULT),
+    #
+    # 0x06021368: ("pianist/angie/left", ORIGIN_DEFAULT),
+    # 0x0602134F: ("pianist/angie/right", ORIGIN_DEFAULT),
+    #
+    # 0x060213A2: ("pianist/isaiah/left", ORIGIN_DEFAULT),
+    # 0x06021387: ("pianist/isaiah/right", ORIGIN_DEFAULT),
 
 }
 
@@ -128,7 +142,8 @@ def handle_position_cdp_music(serial, position, user_data):
 
     if position is not None:
         position_raw = [(a * b) - c for a, b, c in zip(position, DIRECTION, origin)]
-        position = human_filter_update(serial, position_raw)
+        position_raw[0] *= 1.01
+        position = position_smooth(serial, position_raw)  # human_filter_update(serial, position_raw)
 
         if position is not None and "tramp" not in name:
             cdp_pos_raw[serial] = position_raw
@@ -187,6 +202,7 @@ def handle_position_cdp(serial, position, user_data):
 
     if position is not None:
         position = [a * b for a, b in zip(position, DIRECTION)]
+        position = position_smooth(serial, position)
         # position = human_filter_update(serial, position)
 
         if position is not None:  # and not reject_position(serial, position):
@@ -231,6 +247,21 @@ def handle_position_cdp(serial, position, user_data):
 
     if len(result):
         return result
+
+
+lowpass_o1 = {}
+lowpass_o2 = {}
+
+
+def position_smooth(serial, position):
+    if serial not in lowpass_o1:
+        lowpass_o1[serial] = [0, 0, 0]
+        lowpass_o2[serial] = [0, 0, 0]
+
+    lowpass_o1[serial] = [lp1 * 0.1 + p * 0.9 for lp1, p in zip(lowpass_o1[serial], position)]
+    lowpass_o2[serial] = [lp2 * 0.1 + lp1 * 0.9 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
+
+    return lowpass_o2[serial]
 
 
 hf_thr = (0.25 / 100, 1.0 / 100)
@@ -355,12 +386,11 @@ def note_last_block(serial):
 
 
 def map_note_cdp(lateral_position):
-    return map_note(NOTE_AXIS_MAP_CDP, lateral_position)
+    return map_note(NOTE_AXIS_MAP_CDP, NOTE_AXIS_MAP_CDP_KEYS, lateral_position)
 
 
-def map_note(note_map, lateral_position):
-    note = None
-    thresholds = list(reversed(sorted(note_map.keys())))
+def map_note(note_map, keys, lateral_position):
+    thresholds = keys
 
     for threshold in thresholds:
         if lateral_position >= threshold:

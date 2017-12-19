@@ -9,11 +9,26 @@ import time
 import sched
 import wand
 
+lowpass_o1 = {}
+lowpass_o2 = {}
+
+
+def position_smooth(serial, position):
+    if serial not in lowpass_o1:
+        lowpass_o1[serial] = [0, 0, 0]
+        lowpass_o2[serial] = [0, 0, 0]
+
+    lowpass_o1[serial] = [lp1 * 0.1 + p * 0.9 for lp1, p in zip(lowpass_o1[serial], position)]
+    lowpass_o2[serial] = [lp2 * 0.1 + lp1 * 0.9 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
+
+    return lowpass_o2[serial]
+
 
 def handle_data(ts, serial, name, origin, data):
     position = data[2:5]
 
     if name in ("dancer/left-wrist", "dancer/right-wrist", "dancer/wand"):
+        position = position_smooth(serial, position)
         vec = wand.calculate_pointing(name, position)
         if vec is not None:
             print(ts, vec)
