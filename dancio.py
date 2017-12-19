@@ -128,10 +128,13 @@ def handle_position_cdp_music(serial, position, user_data):
 
     if position is not None:
         position_raw = [(a * b) - c for a, b, c in zip(position, DIRECTION, origin)]
-        position_raw[0] *= 1.01
         position = position_smooth(serial, position_raw)  # human_filter_update(serial, position_raw)
 
-        if position is not None and "tramp" not in name:
+        if "pianist" in name:
+            position[0] *= 1.005
+            position = human_filter_update(serial, position)
+
+        if (position is not None) and ("tramp" not in name):
             cdp_pos_raw[serial] = position_raw
             cdp_pos[serial] = position
 
@@ -189,17 +192,19 @@ def handle_position_cdp(serial, position, user_data):
     if position is not None:
         position = [a * b for a, b in zip(position, DIRECTION)]
         position = position_smooth(serial, position)
-        # position = human_filter_update(serial, position)
 
-        if position is not None:  # and not reject_position(serial, position):
-            if name in ("dancer/left-wrist", "dancer/right-wrist", "dancer/wand"):
-                wdist, vec = wand.calculate_pointing(name, position)
+        if "pianist" in name:
+            position[0] *= 1.005
+            position = human_filter_update(serial, position)
 
-                if vec is not None:
-                    result.append(osc_gesture("pointing", "dancer", *vec))
+        if name in ("dancer/left-wrist", "dancer/right-wrist", "dancer/wand"):
+            wdist, vec = wand.calculate_pointing(name, position)
 
-            if "tramp" not in name:
-                result.append(osc_position(name, position))
+            if vec is not None:
+                result.append(osc_gesture("pointing", "dancer", *vec))
+
+        if "tramp" not in name:
+            result.append(osc_position(name, position))
 
     if user_data is None or not len(user_data) or len(user_data) < 15:
         if len(result):
@@ -245,12 +250,12 @@ def position_smooth(serial, position):
         lowpass_o2[serial] = [0, 0, 0]
 
     lowpass_o1[serial] = [lp1 * 0.005 + p * 0.995 for lp1, p in zip(lowpass_o1[serial], position)]
-    lowpass_o2[serial] = [lp2 * 0.005 + lp1 * 0.995 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
+    lowpass_o2[serial] = [lp2 * 0.1 + lp1 * 0.9 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
 
     return lowpass_o2[serial]
 
 
-hf_thr = (0.25 / 100, 1.0 / 100)
+hf_thr = (0.2 / 100, 0.8 / 100)
 hf_cleanx = {}
 
 
