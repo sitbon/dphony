@@ -132,7 +132,7 @@ def handle_position_cdp_music(serial, position, user_data):
 
         if "pianist" in name:
             position[0] *= 1.005
-            position = human_filter_update(serial, position)
+            # position = human_filter_update(serial, position)
 
         if (position is not None) and ("tramp" not in name):
             cdp_pos_raw[serial] = position_raw
@@ -195,7 +195,7 @@ def handle_position_cdp(serial, position, user_data):
 
         if "pianist" in name:
             position[0] *= 1.005
-            position = human_filter_update(serial, position)
+            # position = human_filter_update(serial, position)
 
         if name in ("dancer/left-wrist", "dancer/right-wrist", "dancer/wand"):
             wdist, vec = wand.calculate_pointing(name, position)
@@ -249,7 +249,7 @@ def position_smooth(serial, position):
         lowpass_o1[serial] = [0, 0, 0]
         lowpass_o2[serial] = [0, 0, 0]
 
-    lowpass_o1[serial] = [lp1 * 0.005 + p * 0.995 for lp1, p in zip(lowpass_o1[serial], position)]
+    lowpass_o1[serial] = [lp1 * 0.2 + p * 0.8 for lp1, p in zip(lowpass_o1[serial], position)]
     lowpass_o2[serial] = [lp2 * 0.1 + lp1 * 0.9 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
 
     return lowpass_o2[serial]
