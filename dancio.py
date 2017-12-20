@@ -80,29 +80,26 @@ NOTE_AXIS_MAP_CDP_KEYS = list(reversed(sorted(NOTE_AXIS_MAP_CDP.keys())))
 
 DEVICE_FILTER_CDP = {
 
-    0x06021390: ("pianist/sergio/left", ORIGIN_DEFAULT),
-    0x06021355: ("pianist/sergio/right", ORIGIN_DEFAULT),
+    0x0602123F: ("pianist/kevin/left", ORIGIN_DEFAULT),
+    0x0602101E: ("pianist/kevin/right", ORIGIN_DEFAULT),
 
-    0x0602135D: ("pianist/kevin/left", ORIGIN_DEFAULT),
-    0x06021346: ("pianist/kevin/right", ORIGIN_DEFAULT),
+    0x060212A2: ("pianist/sergio/left", ORIGIN_DEFAULT),
+    0x0602126B: ("pianist/sergio/right", ORIGIN_DEFAULT),
 
-    0x0602138E: ("pianist/angie/left", ORIGIN_DEFAULT),
-    0x06021343: ("pianist/angie/right", ORIGIN_DEFAULT),
+    0x06021240: ("pianist/angie/left", ORIGIN_DEFAULT),
+    0x06021276: ("pianist/angie/right", ORIGIN_DEFAULT),
 
-    0x06021368: ("pianist/isaiah/left", ORIGIN_DEFAULT),
-    0x060213A2: ("pianist/isaiah/right", ORIGIN_DEFAULT),
+    0x0602122D: ("pianist/isaiah/left", ORIGIN_DEFAULT),
+    0x060212D0: ("pianist/isaiah/right", ORIGIN_DEFAULT),
 
-    0x0602135C: ("dancer/left-wrist", ORIGIN_DEFAULT),
-    0x06021344: ("dancer/right-wrist", ORIGIN_DEFAULT),
-    0x06021349: ("dancer/right-ankle", ORIGIN_DEFAULT),
-    0x06021395: ("dancer/left-ankle", ORIGIN_DEFAULT),
-    0x06021367: ("dancer/wand", ORIGIN_DEFAULT),
+    0x06021231: ("dancer/left-wrist", ORIGIN_DEFAULT),
+    0x06021243: ("dancer/right-wrist", ORIGIN_DEFAULT),
+    0x06021247: ("dancer/left-ankle", ORIGIN_DEFAULT),
+    0x06021282: ("dancer/right-ankle", ORIGIN_DEFAULT),
+    0x06021278: ("dancer/wand", ORIGIN_DEFAULT),
 
-    0x0602137E: ("tramp/left", ORIGIN_DEFAULT),
-    0x06021340: ("tramp/right", ORIGIN_DEFAULT),
-
-    0x0602134F: ("none/spare/1", ORIGIN_DEFAULT),
-    0x06021387: ("none/spare/2", ORIGIN_DEFAULT),
+    0x0602130F: ("tramp/left", ORIGIN_DEFAULT),
+    0x060212BD: ("tramp/right", ORIGIN_DEFAULT),
 
 }
 
