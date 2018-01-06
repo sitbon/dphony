@@ -31,7 +31,7 @@ def velocity_update(serial, position):
     prev_pos[serial] = position
     prev_ts[serial] = now
 
-    lowpass_o1[serial] = lowpass_o1[serial] * 0.9 + velocity * 0.1
-    lowpass_o2[serial] = lowpass_o2[serial] * 0.9 + lowpass_o1[serial] * 0.1
+    lowpass_o1[serial] = lowpass_o1[serial] * 0.8 + velocity * 0.2
+    lowpass_o2[serial] = lowpass_o2[serial] * 0.95 + lowpass_o1[serial] * 0.05
 
     return velocity, lowpass_o2[serial]

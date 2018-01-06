@@ -80,7 +80,7 @@ NOTE_AXIS_MAP_CDP_KEYS = list(reversed(sorted(NOTE_AXIS_MAP_CDP.keys())))
 
 DEVICE_FILTER_CDP = {
 
-    0x06021390: ("pianist/sergio/left", ORIGIN_DEFAULT),
+    0x0602134F: ("pianist/sergio/left", ORIGIN_DEFAULT),
     0x06021355: ("pianist/sergio/right", ORIGIN_DEFAULT),
 
     0x0602135D: ("pianist/kevin/left", ORIGIN_DEFAULT),
@@ -101,7 +101,6 @@ DEVICE_FILTER_CDP = {
     0x0602137E: ("tramp/left", ORIGIN_DEFAULT),
     0x06021340: ("tramp/right", ORIGIN_DEFAULT),
 
-    0x0602134F: ("none/spare/1", ORIGIN_DEFAULT),
     0x06021387: ("none/spare/2", ORIGIN_DEFAULT),
 
     # 0x0602123F: ("pianist/kevin/left", ORIGIN_DEFAULT),
