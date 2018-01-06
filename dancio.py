@@ -30,50 +30,51 @@ MIDI_EVENT_PITCH_BEND_CHANGE = 0xE0
 
 NOTE_BASE = 0
 
-ORIGIN_DEFAULT = (-6.86, -12, 0)
+ORIGIN_DEFAULT = (-6.3 - 4.52, -11.8, 0)
 DIRECTION = (-1, -1, 1)
+KEY_WIDTH = 0.6
 
 NOTE_AXIS_MAP_CDP = {
-    0.3 * -1:   None,
+    KEY_WIDTH * -1:   None,
 
-    0.3 * 0:    36,
-    0.3 * 1:    38,
-    0.3 * 2:    40,
-    0.3 * 3:    41,
-    0.3 * 4:    43,
-    0.3 * 5:    45,
-    0.3 * 6:    47,
-    0.3 * 7:    48,
-    0.3 * 8:    50,
-    0.3 * 9:    52,
-    0.3 * 10:   53,
-    0.3 * 11:   55,
-    0.3 * 12:   57,
-    0.3 * 13:   59,
-    0.3 * 14:   60,
-    0.3 * 15:   62,
-    0.3 * 16:   64,
-    0.3 * 17:   65,
-    0.3 * 18:   67,
-    0.3 * 19:   69,
-    0.3 * 20:   71,
-    0.3 * 21:   72,
-    0.3 * 22:   74,
-    0.3 * 23:   76,
-    0.3 * 24:   77,
-    0.3 * 25:   79,
-    0.3 * 26:   81,
-    0.3 * 27:   83,
-    0.3 * 28:   84,
-    0.3 * 29:   86,
-    0.3 * 30:   88,
-    0.3 * 31:   89,
-    0.3 * 32:   91,
-    0.3 * 33:   93,
-    0.3 * 34:   95,
-    0.3 * 35:   96,
+    KEY_WIDTH * 0:    36,
+    KEY_WIDTH * 1:    38,
+    KEY_WIDTH * 2:    40,
+    KEY_WIDTH * 3:    41,
+    KEY_WIDTH * 4:    43,
+    KEY_WIDTH * 5:    45,
+    KEY_WIDTH * 6:    47,
+    KEY_WIDTH * 7:    48,
+    KEY_WIDTH * 8:    50,
+    KEY_WIDTH * 9:    52,
+    KEY_WIDTH * 10:   53,
+    KEY_WIDTH * 11:   55,
+    KEY_WIDTH * 12:   57,
+    KEY_WIDTH * 13:   59,
+    KEY_WIDTH * 14:   60,
+    KEY_WIDTH * 15:   62,
+    KEY_WIDTH * 16:   64,
+    KEY_WIDTH * 17:   65,
+    KEY_WIDTH * 18:   67,
+    KEY_WIDTH * 19:   69,
+    KEY_WIDTH * 20:   71,
+    KEY_WIDTH * 21:   72,
+    KEY_WIDTH * 22:   74,
+    KEY_WIDTH * 23:   76,
+    KEY_WIDTH * 24:   77,
+    KEY_WIDTH * 25:   79,
+    KEY_WIDTH * 26:   81,
+    KEY_WIDTH * 27:   83,
+    KEY_WIDTH * 28:   84,
+    KEY_WIDTH * 29:   86,
+    KEY_WIDTH * 30:   88,
+    KEY_WIDTH * 31:   89,
+    KEY_WIDTH * 32:   91,
+    KEY_WIDTH * 33:   93,
+    KEY_WIDTH * 34:   95,
+    KEY_WIDTH * 35:   96,
 
-    0.3 * 36:   None,
+    KEY_WIDTH * 36:   None,
 }
 
 NOTE_AXIS_MAP_CDP_KEYS = list(reversed(sorted(NOTE_AXIS_MAP_CDP.keys())))
@@ -148,10 +149,12 @@ def handle_position_cdp_music(serial, position, user_data):
 
     if position is not None:
         position_raw = [(a * b) - c for a, b, c in zip(position, DIRECTION, origin)]
+        position = position_raw
         position = position_smooth(serial, position_raw)  # human_filter_update(serial, position_raw)
 
         if "pianist" in name:
-            position[0] *= 1.005
+            pass
+            # position[0] *= 1.005
             # position = human_filter_update(serial, position)
 
         if (position is not None) and ("tramp" not in name):
@@ -214,7 +217,8 @@ def handle_position_cdp(serial, position, user_data):
         position = position_smooth(serial, position)
 
         if "pianist" in name:
-            position[0] *= 1.005
+            pass
+            # position[0] *= 1.005
             # position = human_filter_update(serial, position)
 
         if name in ("dancer/left-wrist", "dancer/right-wrist", "dancer/wand"):
@@ -269,8 +273,8 @@ def position_smooth(serial, position):
         lowpass_o1[serial] = [0, 0, 0]
         lowpass_o2[serial] = [0, 0, 0]
 
-    lowpass_o1[serial] = [lp1 * 0.2 + p * 0.8 for lp1, p in zip(lowpass_o1[serial], position)]
-    lowpass_o2[serial] = [lp2 * 0.1 + lp1 * 0.9 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
+    lowpass_o1[serial] = [lp1 * 0.3 + p * 0.7 for lp1, p in zip(lowpass_o1[serial], position)]
+    lowpass_o2[serial] = [lp2 * 0.2 + lp1 * 0.8 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
 
     return lowpass_o2[serial]
 
