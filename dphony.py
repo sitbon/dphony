@@ -113,13 +113,15 @@ def transform_position(position):
 
 def handle_position_music(serial, position):
 
-    position = transform_position(position)
+    position_raw = transform_position(position)
+    position = position_raw
+    position = position_smooth(serial, position_raw)
 
     if serial not in note_info:
         note_info[serial] = None
 
     if note_info[serial] is None:
-        velocityi, velocity = trigger.velocity_update(serial, position)
+        velocityi, velocity = trigger.velocity_update(time.time(), serial, position)
 
         if trigger.is_trigger(velocity):
             print("[{:08X}] trigger v={} y={}".format(serial, velocity, position[1]))
@@ -136,13 +138,30 @@ def handle_position_music(serial, position):
 
 
 def handle_position(serial, position):
-    position = transform_position(position)
+    position_raw = transform_position(position)
+    position = position_raw
+    position = position_smooth(serial, position_raw)
 
     if params.log:
-        velocityi, velocity = trigger.velocity_update(serial, position)
-        log_position(serial, position, velocityi, velocity)
+        velocityi, velocity = trigger.velocity_update(time.time(), serial, position)
+        log_position(serial, position_raw, position, velocityi, velocity)
 
     return osc_position(serial, position)
+
+
+lowpass_o1 = {}
+lowpass_o2 = {}
+
+
+def position_smooth(serial, position):
+    if serial not in lowpass_o1:
+        lowpass_o1[serial] = list(position)
+        lowpass_o2[serial] = list(position)
+
+    lowpass_o1[serial] = [lp1 * 0.9 + p * 0.1 for lp1, p in zip(lowpass_o1[serial], position)]
+    lowpass_o2[serial] = [lp2 * 0.6 + lp1 * 0.4 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
+
+    return lowpass_o2[serial]
 
 
 def note_last_block(serial):
@@ -201,15 +220,15 @@ def log_init():
     log_start = time.time()
 
 
-def log_position(serial, position, velocityi, velocity):
+def log_position(serial, position_raw, position, velocityi, velocity):
     fil = log_files.get(serial, None)
 
     if fil is None:
         fil = log_files[serial] = file(os.path.join(params.log, "{:08X}.csv".format(serial)), "w")
-        fil.write("time,ivelocity,velocity,x,y,z\n")
+        fil.write("time,ivelocity,velocity,rx,ry,rz,x,y,z\n")
 
     elapsed = time.time() - log_start
-    line = "{},{},{},{},{},{}\n".format(elapsed, velocityi, velocity, *position)
+    line = "{},{},{},{},{},{},{},{},{}\n".format(elapsed, velocityi, velocity, *(tuple(position_raw) + tuple(position)))
 
     fil.write(line)
     fil.flush()

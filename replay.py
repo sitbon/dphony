@@ -9,6 +9,7 @@ import time
 import sched
 import wand
 import trigger
+import dphony
 
 lowpass_o1 = {}
 lowpass_o2 = {}
@@ -53,14 +54,33 @@ dphony_out_folder = time.strftime("replay-%m%d.%H%M")
 def handle_data_dphony(ts, serial, data):
     if serial not in dphony_out_files:
         dphony_out_files[serial] = file(os.path.join(dphony_out_folder, serial + ".csv"), 'w')
-        dphony_out_files[serial].write("ts,z,sz\n")
+        if len(data) == 5:
+            dphony_out_files[serial].write("ts,z,sz\n")
+        else:
+            dphony_out_files[serial].write("ts,sz,v,sv\n")
 
-    position = data[-3:]
-    position_smoothed = position_smooth_dphony(serial, position)
-    z, sz = position[2], position_smoothed[2]
+    if len(data) == 5:
+        position = data[-3:]
+        position_smoothed = dphony.position_smooth(serial, position)
+        z, sz = position[2], position_smoothed[2]
 
-    dphony_out_files[serial].write("{},{},{}\n".format(ts, z, sz))
-    dphony_out_files[serial].flush()
+        dphony_out_files[serial].write("{},{},{}\n".format(ts, z, sz))
+        dphony_out_files[serial].flush()
+    else:
+        # new format with smoothed + raw
+        position = data[-6:-3]
+        # position_smoothed = data[-3:]
+        position_smoothed = dphony.position_smooth(serial, position)
+        z, sz = position[2], position_smoothed[2]
+        # v, sv = data[0], data[1]
+        v, sv = trigger.velocity_update(ts, serial, position_smoothed)
+
+        # if trigger.is_trigger(sv):
+        #     print("[{}] t={} sv={}".format(serial, ts, sv))
+
+        dphony_out_files[serial].write("{},{},{},{}\n".format(ts, sz, v, sv))
+        dphony_out_files[serial].flush()
+        pass
 
 
 def main(args):
