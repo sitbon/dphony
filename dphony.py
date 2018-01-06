@@ -96,8 +96,8 @@ note_last = {}
 
 log_files = {}
 
-uwb_rotation_angle = math.radians(225.73)
-uwb_origin = (-0.25, -25.59, -14.85)  # origin for Cow Palace
+uwb_rotation_angle = math.radians(227.07)
+uwb_origin = (-0.16, -28.21, -14.30)  # origin for Park Theater
 
 
 def transform_position(position):
