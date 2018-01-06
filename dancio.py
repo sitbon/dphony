@@ -221,11 +221,11 @@ def handle_position_cdp(serial, position, user_data):
             # position[0] *= 1.005
             # position = human_filter_update(serial, position)
 
-        if name in ("dancer/left-wrist", "dancer/right-wrist", "dancer/wand"):
-            wdist, vec = wand.calculate_pointing(name, position)
-
-            if vec is not None:
-                result.append(osc_gesture("pointing", "dancer", *vec))
+        # if name in ("dancer/left-wrist", "dancer/right-wrist", "dancer/wand"):
+        #     wdist, vec = wand.calculate_pointing(name, position)
+        #
+        #     if vec is not None:
+        #         result.append(osc_gesture("pointing", "dancer", *vec))
 
         if "tramp" not in name:
             result.append(osc_position(name, position))
