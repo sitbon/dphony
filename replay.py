@@ -67,12 +67,11 @@ def handle_data_dphony(ts, serial, data):
         dphony_out_files[serial].write("{},{},{}\n".format(ts, z, sz))
         dphony_out_files[serial].flush()
     else:
-        # new format with smoothed + raw
+        # new format with smoothed + raw, two variants: with and without atime
         position = data[-6:-3]
         # position_smoothed = data[-3:]
         position_smoothed = dphony.position_smooth(serial, position)
         z, sz = position[2], position_smoothed[2]
-        # v, sv = data[0], data[1]
         v, sv = trigger.velocity_update(ts, serial, position_smoothed)
 
         # if trigger.is_trigger(sv):

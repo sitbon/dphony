@@ -111,7 +111,14 @@ def transform_position(position):
     return rx - uwb_origin[0], ry - uwb_origin[1], inz - uwb_origin[2]
 
 
-def handle_position_music(serial, position):
+ts_base = {}
+
+
+def handle_position_music(ts, serial, position):
+    if serial not in ts_base:
+        ts_base[serial] = ts
+
+    ts -= ts_base[serial]
 
     position_raw = transform_position(position)
     position = position_raw
@@ -121,7 +128,7 @@ def handle_position_music(serial, position):
         note_info[serial] = None
 
     if note_info[serial] is None:
-        velocityi, velocity = trigger.velocity_update(time.time(), serial, position)
+        velocityi, velocity = trigger.velocity_update(ts, serial, position)
 
         if trigger.is_trigger(velocity):
             print("[{:08X}] trigger v={} y={}".format(serial, velocity, position[1]))
@@ -137,14 +144,19 @@ def handle_position_music(serial, position):
     return None
 
 
-def handle_position(serial, position):
+def handle_position(ts, serial, position):
+    if serial not in ts_base:
+        ts_base[serial] = ts
+
+    ts -= ts_base[serial]
+
     position_raw = transform_position(position)
     position = position_raw
     position = position_smooth(serial, position_raw)
 
     if params.log:
-        velocityi, velocity = trigger.velocity_update(time.time(), serial, position)
-        log_position(serial, position_raw, position, velocityi, velocity)
+        velocityi, velocity = trigger.velocity_update(ts, serial, position)
+        log_position(ts, serial, position_raw, position, velocityi, velocity)
 
     return osc_position(serial, position)
 
@@ -220,15 +232,15 @@ def log_init():
     log_start = time.time()
 
 
-def log_position(serial, position_raw, position, velocityi, velocity):
+def log_position(ts, serial, position_raw, position, velocityi, velocity):
     fil = log_files.get(serial, None)
 
     if fil is None:
         fil = log_files[serial] = file(os.path.join(params.log, "{:08X}.csv".format(serial)), "w")
-        fil.write("time,ivelocity,velocity,rx,ry,rz,x,y,z\n")
+        fil.write("time,atime,ivelocity,velocity,rx,ry,rz,x,y,z\n")
 
     elapsed = time.time() - log_start
-    line = "{},{},{},{},{},{},{},{},{}\n".format(elapsed, velocityi, velocity, *(tuple(position_raw) + tuple(position)))
+    line = "{},{},{},{},{},{},{},{},{},{}\n".format(ts, elapsed, velocityi, velocity, *(tuple(position_raw) + tuple(position)))
 
     fil.write(line)
     fil.flush()

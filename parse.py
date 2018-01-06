@@ -88,15 +88,15 @@ def parse_dcc(data, handler):
 
     if data_len != data_len_exp:
         print("dcc: length mismatch {} != {}".format(data_len, data_len_exp))
-        return None
+        return
 
     if msg_type == MSG_UWB_EVT_ANCHOR_LOC_CHANGED:
         id_hi = 0x00010000
-        return None
+        return
     elif msg_type == MSG_UWB_EVT_TAG_LOC_CHANGED:
         id_hi = 0x00020000
     else:
-        return None
+        return
 
     count = struct.unpack("<B", msg_data[0])[0]
     msg_data = msg_data[1:]
@@ -104,13 +104,13 @@ def parse_dcc(data, handler):
     results = []
 
     while count:
-        idx, px, py, pz = struct.unpack("<Bhhh", msg_data[:7])
-        msg_data = msg_data[7:]
+        ts, idx, px, py, pz = struct.unpack("<IBfff", msg_data[:17])
+        msg_data = msg_data[17:]
 
         if msg_type == MSG_UWB_EVT_TAG_LOC_CHANGED:
             idx += 128
 
-        result = handler(id_hi | idx, (px/100.0, py/100.0, pz/100.0))
+        result = handler(float(ts) / 1000, id_hi | idx, (px, py, pz))
 
         if result is not None:
             if type(result) in (list, tuple):
