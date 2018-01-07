@@ -52,12 +52,12 @@ dphony_out_folder = time.strftime("replay-%m%d.%H%M")
 
 
 def handle_data_dphony(ts, serial, data):
-    if serial not in dphony_out_files:
-        dphony_out_files[serial] = file(os.path.join(dphony_out_folder, serial + ".csv"), 'w')
-        if len(data) == 5:
-            dphony_out_files[serial].write("ts,z,sz\n")
-        else:
-            dphony_out_files[serial].write("ts,sz,v,sv\n")
+    # if serial not in dphony_out_files:
+    #     dphony_out_files[serial] = file(os.path.join(dphony_out_folder, serial + ".csv"), 'w')
+    #     if len(data) == 5:
+    #         dphony_out_files[serial].write("ts,z,sz\n")
+    #     else:
+    #         dphony_out_files[serial].write("ts,z,sz,v,sv\n")
 
     if len(data) == 5:
         position = data[-3:]
@@ -69,17 +69,13 @@ def handle_data_dphony(ts, serial, data):
     else:
         # new format with smoothed + raw, two variants: with and without atime
         position = data[-6:-3]
-        # position_smoothed = data[-3:]
-        position_smoothed = dphony.position_smooth(serial, position)
-        z, sz = position[2], position_smoothed[2]
-        v, sv = trigger.velocity_update(ts, serial, position_smoothed)
+        trigger.zwin_update(serial, position[2])
 
-        # if trigger.is_trigger(sv):
-        #     print("[{}] t={} sv={}".format(serial, ts, sv))
+        if trigger.zwin_trigger(serial) and not dphony.note_last_block(ts, serial):
+            print("[{}] t={}".format(serial, ts))
 
-        dphony_out_files[serial].write("{},{},{},{}\n".format(ts, sz, v, sv))
-        dphony_out_files[serial].flush()
-        pass
+        # dphony_out_files[serial].write("{},{},{},{},{}\n".format(ts, z, sz, v, sv))
+        # dphony_out_files[serial].flush()
 
 
 def main(args):
@@ -120,11 +116,11 @@ def main(args):
         global dphony_out_folder
         dphony_out_folder = os.path.join(params.folder, dphony_out_folder)
 
-        try:
-            os.makedirs(dphony_out_folder)
-        except OSError as exc:
-            if exc.errno != 17:
-                raise
+        # try:
+        #     os.makedirs(dphony_out_folder)
+        # except OSError as exc:
+        #     if exc.errno != 17:
+        #         raise
 
         for serial, lines in data.items():
             for line in lines:

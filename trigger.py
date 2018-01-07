@@ -9,7 +9,7 @@ lowpass_o2 = {}
 
 
 def is_trigger(velocity):
-    return velocity < -0.8
+    return velocity < -0.3
 
 
 def velocity_update(now, serial, position):
@@ -26,13 +26,13 @@ def velocity_update(now, serial, position):
     prev_pos[serial] = position
     prev_ts[serial] = now
 
-    if (velocity > 2.5) or (velocity < -2.5):
+    if (velocity > 3) or (velocity < -3):
         if serial not in prev_v:
             return 0, 0
 
         return prev_v[serial]
     elif serial in prev_v:
-        if abs(prev_v[serial][0] - velocity) > 0.4:
+        if abs(prev_v[serial][0] - velocity) > 0.5:
             return prev_v[serial]
 
     # if velocity > 3.0:
@@ -46,3 +46,25 @@ def velocity_update(now, serial, position):
     prev_v[serial] = velocity, lowpass_o2[serial]
 
     return velocity, lowpass_o2[serial]
+
+
+zwin = {}
+
+
+def zwin_trigger(serial):
+    zmin_idx, zmin = min(enumerate(zwin[serial]), key=lambda p: p[1])
+    zmax_idx, zmax = max(enumerate(zwin[serial]), key=lambda p: p[1])
+    dz = zmax - zmin
+
+    if zmax_idx < zmin_idx and zmax >= 2 and zmin <= 1.7 and dz >= 0.7:
+        return True
+
+    return False
+
+
+def zwin_update(serial, z):
+    if serial not in zwin:
+        zwin[serial] = []
+
+    zwin[serial].append(z)
+    zwin[serial] = zwin[serial][-8:]

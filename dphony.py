@@ -122,19 +122,20 @@ def handle_position_music(ts, serial, position):
 
     position_raw = transform_position(position)
     position = position_raw
-    position = position_smooth(serial, position_raw)
+    # position = position_smooth(serial, position_raw)
+
+    trigger.zwin_update(serial, position[2])
 
     if serial not in note_info:
         note_info[serial] = None
 
     if note_info[serial] is None:
-        velocityi, velocity = trigger.velocity_update(ts, serial, position)
 
-        if trigger.is_trigger(velocity):
-            print("[{:08X}] trigger v={} y={}".format(serial, velocity, position[1]))
+        if trigger.zwin_trigger(serial):
+            # print("[{:08X}] trigger v={} y={}".format(serial, velocity, position[1]))
             note_info[serial] = map_note_dcc(position[1])
 
-            if (note_info[serial] is not None) and (not note_last_block(serial)):
+            if (note_info[serial] is not None) and (not note_last_block(ts, serial)):
                 print("[{:08X}] note: {}".format(serial, note_info[serial]))
                 return osc_midi(serial, MIDI_EVENT_NOTE_ON, note_info[serial], 127)
 
@@ -152,7 +153,7 @@ def handle_position(ts, serial, position):
 
     position_raw = transform_position(position)
     position = position_raw
-    position = position_smooth(serial, position_raw)
+    # position = position_smooth(serial, position_raw)
 
     if params.log:
         velocityi, velocity = trigger.velocity_update(ts, serial, position)
@@ -170,20 +171,19 @@ def position_smooth(serial, position):
         lowpass_o1[serial] = list(position)
         lowpass_o2[serial] = list(position)
 
-    lowpass_o1[serial] = [lp1 * 0.9 + p * 0.1 for lp1, p in zip(lowpass_o1[serial], position)]
-    lowpass_o2[serial] = [lp2 * 0.6 + lp1 * 0.4 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
+    lowpass_o1[serial] = [lp1 * 0.7 + p * 0.3 for lp1, p in zip(lowpass_o1[serial], position)]
+    lowpass_o2[serial] = [lp2 * 0.5 + lp1 * 0.5 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
 
     return lowpass_o2[serial]
 
 
-def note_last_block(serial):
-    now = time.time()
+def note_last_block(ts, serial):
     block = False
 
-    if (serial in note_last) and (now - note_last[serial]) <= 0.500:
+    if (serial in note_last) and (ts - note_last[serial]) <= 0.5:
             block = True
 
-    note_last[serial] = now
+    note_last[serial] = ts
     return block
 
 
@@ -199,6 +199,9 @@ def map_note(note_map, keys, lateral_position):
             if note_map[threshold] is None:
                 return None
             return NOTE_BASE + note_map[threshold]
+
+    if note_map[thresholds[-1]] is None:
+        return None
 
     return NOTE_BASE + note_map[thresholds[-1]]
 
