@@ -102,7 +102,9 @@ DEVICE_FILTER_CDP = {
     0x0602137E: ("tramp/left", ORIGIN_DEFAULT),
     0x06021340: ("tramp/right", ORIGIN_DEFAULT),
 
-    0x06021387: ("none/spare/2", ORIGIN_DEFAULT),
+    0x06021387: ("pianist/spare/1", ORIGIN_DEFAULT),
+    0x0602136A: ("pianist/spare/2", ORIGIN_DEFAULT),
+    0x06021366: ("pianist/spare/3", ORIGIN_DEFAULT),
 
     # 0x0602123F: ("pianist/kevin/left", ORIGIN_DEFAULT),
     # 0x0602101E: ("pianist/kevin/right", ORIGIN_DEFAULT),
