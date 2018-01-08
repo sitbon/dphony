@@ -172,7 +172,7 @@ def handle_position_cdp_music(serial, position, user_data):
     typ = struct.unpack("<B", user_data[:1])[0]
 
     user_data = user_data[1:]
-    has_event = False
+    has_event = 0
     event_note = 0
 
     if typ == 4:
@@ -184,9 +184,8 @@ def handle_position_cdp_music(serial, position, user_data):
         else:
             cdp_dedup[serial] = sequence
 
-        has_event = mask
-
         if (mask & 2) and (serial in cdp_pos) and (cdp_pos[serial][1] <= 2) and ("pianist" in name):
+            has_event = 1
             pos = cdp_pos[serial]
             note = map_note_cdp(pos[0])
 
