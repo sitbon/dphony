@@ -105,7 +105,7 @@ def handle_position_music(ts, serial, position):
 
         if trigger.zwin_trigger(serial):
             # print("[{:08X}] trigger v={} y={}".format(serial, velocity, position[1]))
-            note_info[serial] = map_note_dcc(position[1])
+            note_info[serial] = map_note_dcc(position[0])
 
             if (note_info[serial] is not None) and (not note_last_block(ts, serial)):
                 print("[{:08X}] note: {}".format(serial, note_info[serial]))
