@@ -186,7 +186,7 @@ def handle_position_cdp_music(serial, position, user_data):
 
         has_event = mask
 
-        if (mask & 2) and (serial in cdp_pos) and ("dancer" not in name):
+        if (mask & 2) and (serial in cdp_pos) and (cdp_pos[serial][1] <= 2) and ("pianist" in name):
             pos = cdp_pos[serial]
             note = map_note_cdp(pos[0])
 
