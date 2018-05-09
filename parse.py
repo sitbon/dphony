@@ -72,8 +72,7 @@ def parse_cdp(data, handler):
 
         data = data[size:]
 
-    if len(results):
-        return results
+    return results
 
 
 def parse_dcc(data, handler):
