@@ -14,7 +14,10 @@ import OSC
 
 ORIGIN_DEFAULT = (0, 0, 0)
 DIRECTION = (1, 1, 1)
-DELTA_THRESHOLD = 0.35
+DELTA_THRESHOLD = 0.05
+HYSTERESIS_ENABLE = False
+HYSTERESIS_REPEAT = True
+SAMPLE_AVG = 1
 
 DEVICE_FILTER = {
 
@@ -35,6 +38,7 @@ def handle_position(serial, position, user_data):
         position = transform_position(position, origin)
         position = position_smooth(serial, position)
         position = position_hysteresis(serial, position)
+        position = position_resample(serial, position)
 
         if position:
             if params.verbose:
@@ -46,17 +50,39 @@ def handle_position(serial, position, user_data):
     return result
 
 
-position_prev = {}
-NO_POSITION = [float('inf')] * 3
+resample = {}
+
+
+def position_resample(serial, position):
+    if SAMPLE_AVG <= 1 or not position:
+        return position
+
+    points = resample[serial] = resample.get(serial, [])
+    points.append(position)
+
+    if len(points) >= SAMPLE_AVG:
+        del resample[serial]
+        return [float(sum(p))/len(p) for p in zip(*points)]
+
+    return None
+
+
+hysteresis_prev = {}
 
 
 def position_hysteresis(serial, position):
-    prev = position_prev.get(serial, NO_POSITION)
+    if HYSTERESIS_ENABLE is not True:
+        return position
 
-    if distance(position, prev) < DELTA_THRESHOLD:
+    prev = hysteresis_prev.get(serial, None)
+
+    if prev and distance(position, prev) < DELTA_THRESHOLD:
+        if HYSTERESIS_REPEAT:
+            return prev
+
         return None  # Alternatively, continue reporting the same position
 
-    position_prev[serial] = position
+    hysteresis_prev[serial] = position
     return position
 
 
@@ -73,8 +99,8 @@ def position_smooth(serial, position):
         lowpass_o1[serial] = [0, 0, 0]
         lowpass_o2[serial] = [0, 0, 0]
 
-    lowpass_o1[serial] = [lp1 * 0.7 + p * 0.3 for lp1, p in zip(lowpass_o1[serial], position)]
-    lowpass_o2[serial] = [lp2 * 0.7 + lp1 * 0.3 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
+    lowpass_o1[serial] = [lp1 * 0.8 + p * 0.2 for lp1, p in zip(lowpass_o1[serial], position)]
+    lowpass_o2[serial] = [lp2 * 0.9 + lp1 * 0.1 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
 
     return lowpass_o2[serial]
 
@@ -117,6 +143,7 @@ def display_position(serial, position, data):
         position = transform_position(position, DEVICE_FILTER.get(serial, (None, ORIGIN_DEFAULT))[1])
         position = position_smooth(serial, position)
         position = position_hysteresis(serial, position)
+        position = position_resample(serial, position)
 
         if not position:
             return
