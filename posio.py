@@ -124,7 +124,7 @@ def median(arr):
 
 
 def osc_position(serial, position):
-    return osc_message("/position/{}".format(serial), *position)
+    return osc_message("/{}/position".format(serial), *position)
 
 
 def osc_message(path, *data):
