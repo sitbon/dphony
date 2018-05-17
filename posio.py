@@ -18,6 +18,8 @@ DELTA_THRESHOLD = 0.05
 HYSTERESIS_ENABLE = False
 HYSTERESIS_REPEAT = True
 SAMPLE_AVG = 1
+LOWPASS_ENABLE = True
+LOWPASS_COEFF = [(0.5, 0.5), (0.5, 0.5), (0.5, 0.5)]
 
 DEVICE_FILTER = {
 
@@ -92,17 +94,23 @@ def transform_position(position, origin=(0, 0, 0)):
 
 lowpass_o1 = {}
 lowpass_o2 = {}
+lowpass_o3 = {}
 
 
 def position_smooth(serial, position):
+    if not LOWPASS_ENABLE:
+        return position
+
     if serial not in lowpass_o1:
         lowpass_o1[serial] = [0, 0, 0]
         lowpass_o2[serial] = [0, 0, 0]
+        lowpass_o3[serial] = [0, 0, 0]
 
-    lowpass_o1[serial] = [lp1 * 0.8 + p * 0.2 for lp1, p in zip(lowpass_o1[serial], position)]
-    lowpass_o2[serial] = [lp2 * 0.9 + lp1 * 0.1 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
+    lowpass_o1[serial] = [lp1 * 0.9 + p * 0.1 for lp1, p in zip(lowpass_o1[serial], position)]
+    lowpass_o2[serial] = [lp2 * 0.7 + lp1 * 0.3 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
+    lowpass_o3[serial] = [lp3 * 0.5 + lp2 * 0.5 for lp3, lp2 in zip(lowpass_o3[serial], lowpass_o2[serial])]
 
-    return lowpass_o2[serial]
+    return lowpass_o3[serial]
 
 
 def distance(p1, p2):
