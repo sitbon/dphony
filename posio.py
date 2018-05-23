@@ -15,12 +15,14 @@ import OSC
 
 ORIGIN_DEFAULT = (0, 0, 0)
 DIRECTION = (1, 1, 1)
-DELTA_THRESHOLD = 0.05
 HYSTERESIS_ENABLE = False
 HYSTERESIS_REPEAT = True
+DELTA_THRESHOLD = 0.05
 WINDOW_MEAN_SIZE = 1
 SMOOTH_ENABLE = True
-SMOOTH_COEFF = [(0.99, 0.01), (0.95, 0.05), (0.9, 0.1)]
+SMOOTH_COEFF = [(0.98, 0.02), (0.9, 0.1)]
+VELOCITY_FILTER_ENABLE = True
+VELOCITY_THRESHOLD = 10
 
 DEVICE_FILTER = {
 
@@ -39,7 +41,7 @@ def handle_position(serial, position, user_data):
 
     if position is not None:
         position = transform_position(position, origin)
-        position = position_smooth(serial, position)
+        position = position_smooth_old(serial, position)
         position = position_window_mean(serial, position)
         position = position_hysteresis(serial, position)
 
@@ -120,23 +122,27 @@ def position_smooth(serial, position):
 
 lowpass_o1 = {}
 lowpass_o2 = {}
-lowpass_o3 = {}
 
 
 def position_smooth_old(serial, position):
+    """Brown's double linear exponential smoothing.
+
+    Same as the generic method above save for the final calculation. (So, more than a lowpass?)
+    TODO: Determine if this can be made generic as well.
+    """
     if not SMOOTH_ENABLE or not position:
         return position
 
     if serial not in lowpass_o1:
         lowpass_o1[serial] = position
         lowpass_o2[serial] = position
-        lowpass_o3[serial] = position
 
-    lowpass_o1[serial] = [lp1 * 0.9 + p * 0.1 for lp1, p in zip(lowpass_o1[serial], position)]
-    lowpass_o2[serial] = [lp2 * 0.9 + lp1 * 0.1 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
-    lowpass_o3[serial] = [lp3 * 0.9 + lp2 * 0.1 for lp3, lp2 in zip(lowpass_o3[serial], lowpass_o2[serial])]
+    # note that alpha is the second coefficient in the first pass and the first coefficient in the
+    # second pass, unlike the chaining method done above.
+    lowpass_o1[serial] = [lp1 * 0.99 + p * 0.01 for lp1, p in zip(lowpass_o1[serial], position)]
+    lowpass_o2[serial] = [lp2 * 0.002 + lp1 * 0.998 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
 
-    return lowpass_o1[serial]
+    return [2 * lp1 - lp2 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
 
 
 def distance(p1, p2):
