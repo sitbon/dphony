@@ -539,6 +539,7 @@ def main(args):
 
     print(fwd)
     fwd.start()
+    fwd.join()
 
 
 if __name__ == '__main__':

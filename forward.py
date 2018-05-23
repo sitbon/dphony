@@ -95,35 +95,54 @@ class Forward(object):
         self.thr_rx.start()
         self.thr_tx.start()
 
+    def join(self):
+        while self.thr_rx.isAlive():
+            self.thr_rx.join(0.25)
+
+        while self.thr_tx.isAlive():
+            self.thr_tx.join(0.25)
+
     def _recv_task(self):
-        while 1:
-            self.sem_prod.acquire()
-            data, addr = self.udp_rx.sock.recvfrom(4096)
+        try:
+            while 1:
+                self.sem_prod.acquire()
+                data, addr = self.udp_rx.sock.recvfrom(4096)
 
-            # if self.verbose:
-            #     print("[{}:{}] {}".format(addr[0], addr[1], " ".join("{:02X}".format(ord(b)) for b in data)), file=sys.stderr)
+                # if self.verbose:
+                #     print("[{}:{}] {}".format(addr[0], addr[1], " ".join("{:02X}".format(ord(b)) for b in data)), file=sys.stderr)
 
-            self.queue.append(data)
-            self.sem_cons.release()
+                self.queue.append(data)
+                self.sem_cons.release()
+
+        except KeyboardInterrupt:
+            sys.exit()
 
     def _send_task(self):
-        while 1:
-            self.sem_cons.acquire()
-            data = self.queue.pop(0)
-            self.sem_prod.release()
+        try:
+            while 1:
+                self.sem_cons.acquire()
+                data = self.queue.pop(0)
+                self.sem_prod.release()
 
-            try:
-                data = self.process(data)
-            except:
-                traceback.print_exc()
-                data = None
+                try:
+                    data = self.process(data)
 
-            if data:
-                if type(data) not in (list, tuple):
-                    data = (data,)
+                except KeyboardInterrupt:
+                    raise
 
-                for message in data:
-                    self.udp_tx.sock.sendto(message, self.udp_tx.dest)
+                except:
+                    traceback.print_exc()
+                    data = None
+
+                if data:
+                    if type(data) not in (list, tuple):
+                        data = (data,)
+
+                    for message in data:
+                        self.udp_tx.sock.sendto(message, self.udp_tx.dest)
+
+        except KeyboardInterrupt:
+            sys.exit()
 
     def process(self, data):
         return data
