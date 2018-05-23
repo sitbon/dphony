@@ -8,6 +8,7 @@ import argparse
 import traceback
 import math
 import forward
+import cleanup
 import parse
 import OSC
 
@@ -17,9 +18,9 @@ DIRECTION = (1, 1, 1)
 DELTA_THRESHOLD = 0.05
 HYSTERESIS_ENABLE = False
 HYSTERESIS_REPEAT = True
-SAMPLE_AVG = 1
-LOWPASS_ENABLE = True
-LOWPASS_COEFF = [(0.5, 0.5), (0.5, 0.5), (0.5, 0.5)]
+WINDOW_MEAN_SIZE = 1
+SMOOTH_ENABLE = True
+SMOOTH_COEFF = [(0.99, 0.01), (0.95, 0.05), (0.9, 0.1)]
 
 DEVICE_FILTER = {
 
@@ -39,8 +40,8 @@ def handle_position(serial, position, user_data):
     if position is not None:
         position = transform_position(position, origin)
         position = position_smooth(serial, position)
+        position = position_window_mean(serial, position)
         position = position_hysteresis(serial, position)
-        position = position_resample(serial, position)
 
         if position:
             if params.verbose:
@@ -52,28 +53,28 @@ def handle_position(serial, position, user_data):
     return result
 
 
-resample = {}
+window_mean = {}
 
 
-def position_resample(serial, position):
-    if SAMPLE_AVG <= 1 or not position:
+def position_window_mean(serial, position):
+    if WINDOW_MEAN_SIZE <= 1 or not position:
         return position
 
-    points = resample[serial] = resample.get(serial, [])
+    points = window_mean[serial] = window_mean.get(serial, [])
     points.append(position)
 
-    if len(points) >= SAMPLE_AVG:
-        del resample[serial]
-        return [float(sum(p))/len(p) for p in zip(*points)]
+    if len(points) > WINDOW_MEAN_SIZE:
+        points = window_mean[serial] = points[-WINDOW_MEAN_SIZE:]
 
-    return None
+    # Initial case of len(points) < SAMPLE_AVG ignored
+    return position_mean(points)
 
 
 hysteresis_prev = {}
 
 
 def position_hysteresis(serial, position):
-    if HYSTERESIS_ENABLE is not True:
+    if HYSTERESIS_ENABLE is not True or not position:
         return position
 
     prev = hysteresis_prev.get(serial, None)
@@ -92,25 +93,50 @@ def transform_position(position, origin=(0, 0, 0)):
     return [(a * b) - c for a, b, c in zip(position, DIRECTION, origin)]
 
 
+smooth = {}
+SMOOTH_COEFF_COUNT = len(SMOOTH_COEFF[0])
+SMOOTH_ORDER = len(SMOOTH_COEFF)
+
+
+def position_smooth(serial, position):
+    if not SMOOTH_ENABLE or not position:
+        return position
+
+    if serial not in smooth:
+        smooth[serial] = [[position] * SMOOTH_COEFF_COUNT] * SMOOTH_ORDER
+
+    smooth_order_prev = position
+
+    for lowpass, coeff in zip(smooth[serial], SMOOTH_COEFF):
+        lowpass.append(smooth_order_prev)
+
+        if len(lowpass) > SMOOTH_COEFF_COUNT:
+            lowpass[:] = lowpass[-SMOOTH_COEFF_COUNT:]
+
+        smooth_order_prev = lowpass[-1] = [sum(p*c for p, c in zip(p, coeff)) for p in zip(*lowpass)]
+
+    return smooth_order_prev
+
+
 lowpass_o1 = {}
 lowpass_o2 = {}
 lowpass_o3 = {}
 
 
-def position_smooth(serial, position):
-    if not LOWPASS_ENABLE:
+def position_smooth_old(serial, position):
+    if not SMOOTH_ENABLE or not position:
         return position
 
     if serial not in lowpass_o1:
-        lowpass_o1[serial] = [0, 0, 0]
-        lowpass_o2[serial] = [0, 0, 0]
-        lowpass_o3[serial] = [0, 0, 0]
+        lowpass_o1[serial] = position
+        lowpass_o2[serial] = position
+        lowpass_o3[serial] = position
 
     lowpass_o1[serial] = [lp1 * 0.9 + p * 0.1 for lp1, p in zip(lowpass_o1[serial], position)]
-    lowpass_o2[serial] = [lp2 * 0.7 + lp1 * 0.3 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
-    lowpass_o3[serial] = [lp3 * 0.5 + lp2 * 0.5 for lp3, lp2 in zip(lowpass_o3[serial], lowpass_o2[serial])]
+    lowpass_o2[serial] = [lp2 * 0.9 + lp1 * 0.1 for lp2, lp1 in zip(lowpass_o2[serial], lowpass_o1[serial])]
+    lowpass_o3[serial] = [lp3 * 0.9 + lp2 * 0.1 for lp3, lp2 in zip(lowpass_o3[serial], lowpass_o2[serial])]
 
-    return lowpass_o3[serial]
+    return lowpass_o1[serial]
 
 
 def distance(p1, p2):
@@ -119,6 +145,14 @@ def distance(p1, p2):
 
 def planar_distance(p1, p2):
     return math.sqrt((p2[0] - p1[0])**2 + (p2[1] - p1[1])**2)
+
+
+def position_mean(points):
+    return [float(sum(p)) / len(p) for p in zip(*points)]
+
+
+def position_median(points):
+    return [median(p) for p in zip(*points)]
 
 
 def median(arr):
@@ -150,8 +184,8 @@ def display_position(serial, position, data):
     else:
         position = transform_position(position, DEVICE_FILTER.get(serial, (None, ORIGIN_DEFAULT))[1])
         position = position_smooth(serial, position)
+        position = position_window_mean(serial, position)
         position = position_hysteresis(serial, position)
-        position = position_resample(serial, position)
 
         if not position:
             return
@@ -181,8 +215,11 @@ def main(args):
         handler=lambda data: handler(data, position_handler)
     )
 
+    cleanup.install(lambda: os._exit(0))
+
     print(fwd)
     fwd.start()
+    fwd.join()
 
 
 if __name__ == '__main__':
